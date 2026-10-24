@@ -6,18 +6,20 @@
     <meta name="theme-color" content="#101d32" />
     <title>Расписание БНТУ</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <style>
       :root {
         color-scheme: light;
         --navy: #101d32;
         --navy-soft: #1d2c43;
         --red: #b61f36;
-        --red-soft: #f6e8eb;
-        --paper: #f4f3ef;
+        --red-soft: #f9e9ec;
+        --paper: #ffffff;
+        --surface: #f7f8fa;
         --card: #fff;
         --text: #172236;
-        --muted: #737c89;
-        --line: #e5e7e9;
+        --muted: #586577;
+        --line: #d9dfe7;
         --green: #256b59;
         --shadow: 0 16px 42px rgb(16 29 50 / 8%);
         font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -26,8 +28,8 @@
       }
 
       * { box-sizing: border-box; }
-      body { margin: 0; min-height: 100vh; background: var(--paper); }
-      button, select { font: inherit; }
+      body { margin: 0; min-height: 100vh; background: #fff; }
+      button, input, select { font: inherit; }
       button { color: inherit; }
       .app { width: min(100%, 760px); margin: 0 auto; padding: 0 20px calc(32px + env(safe-area-inset-bottom)); }
       .masthead { position: relative; overflow: hidden; margin: 0 -20px 27px; padding: calc(19px + env(safe-area-inset-top)) 20px 27px; color: white; background: var(--navy); }
@@ -45,58 +47,76 @@
       h1 { margin: 7px 0 0; font-size: clamp(34px, 9vw, 48px); line-height: .98; letter-spacing: -.055em; }
       .hero-copy { margin: 12px 0 0; color: rgb(255 255 255 / 66%); font-size: 13px; }
       .content { position: relative; }
-      .group-panel { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 13px; margin-top: -52px; padding: 17px; border: 1px solid rgb(16 29 50 / 8%); border-radius: 17px; background: var(--card); box-shadow: var(--shadow); }
-      .field-label { display: block; margin: 0 0 8px; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
-      .group-select { width: 100%; min-width: 0; padding: 10px 35px 10px 12px; border: 1px solid var(--line); border-radius: 10px; outline: none; color: var(--text); background: #fff; font-size: 14px; font-weight: 730; }
-      .group-select:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgb(182 31 54 / 10%); }
-      .faculty-count { padding-bottom: 10px; color: var(--muted); font-size: 10px; white-space: nowrap; }
-      .group-meta { grid-column: 1 / -1; display: flex; align-items: center; gap: 7px; min-height: 15px; color: var(--muted); font-size: 11px; }
+      .group-panel { display: grid; grid-template-columns: 1fr; align-items: stretch; gap: 11px; margin-top: -52px; padding: 17px; border: 1px solid rgb(16 29 50 / 8%); border-radius: 17px; background: #fff; box-shadow: var(--shadow); }
+      .group-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      .group-field { min-width: 0; }
+      .field-label { display: block; margin: 0 0 7px; color: var(--muted); font-size: 11px; font-weight: 750; letter-spacing: .06em; }
+      .group-select { width: 100%; min-width: 0; min-height: 46px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 11px; outline: none; color: var(--text); background-color: #fff; font-size: 15px; font-weight: 680; }
+      .group-select::placeholder { color: #687487; opacity: 1; font-weight: 500; }
+      .group-select:focus-visible { border-color: var(--red); box-shadow: 0 0 0 3px rgb(182 31 54 / 12%); }
+      .faculty-count { justify-self: start; margin-top: -3px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+      .group-meta { display: flex; align-items: center; gap: 8px; min-height: 18px; color: var(--muted); font-size: 12px; line-height: 1.4; }
       .group-meta::before { width: 5px; height: 5px; border-radius: 50%; background: var(--green); content: ""; }
       .group-meta.invalid { color: var(--red); }
       .group-meta.invalid::before { background: var(--red); }
       .week-head { display: flex; align-items: center; justify-content: space-between; margin: 28px 0 12px; }
       .week-copy { display: flex; flex-direction: column; gap: 3px; }
-      .week-caption { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+      .week-caption { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
       .week-label { font-size: 15px; font-weight: 760; letter-spacing: -.02em; }
       .week-actions { display: flex; gap: 7px; }
-      .icon-btn { display: grid; width: 35px; height: 35px; place-items: center; border: 1px solid var(--line); border-radius: 10px; background: var(--card); cursor: pointer; }
-      .icon-btn:disabled { opacity: .36; cursor: default; }
-      .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; padding: 5px; border: 1px solid var(--line); border-radius: 16px; background: rgb(255 255 255 / 58%); }
-      .day { min-width: 0; padding: 8px 1px; border: 0; border-radius: 11px; background: transparent; cursor: pointer; }
-      .day-name { display: block; margin-bottom: 7px; color: var(--muted); font-size: 9px; font-weight: 700; text-transform: uppercase; }
+      .icon-btn { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid var(--line); border-radius: 11px; background: var(--card); cursor: pointer; transition: background-color .18s ease, border-color .18s ease, transform .18s ease; }
+      .icon-btn:disabled { opacity: .58; cursor: default; }
+      .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; padding: 5px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+      .day { min-width: 0; padding: 8px 1px; border: 0; border-radius: 11px; background: transparent; cursor: pointer; transition: background-color .18s ease, color .18s ease, transform .18s ease; }
+      .day-name { display: block; margin-bottom: 7px; color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; }
       .day-date { display: grid; width: 31px; height: 31px; place-items: center; margin: auto; border-radius: 9px; font-size: 12px; font-weight: 720; }
       .day.active { color: white; background: var(--navy); box-shadow: 0 5px 12px rgb(16 29 50 / 17%); }
       .day.active .day-name { color: rgb(255 255 255 / 68%); }
       .day.today:not(.active) .day-date { color: var(--red); background: var(--red-soft); }
-      .day:disabled { opacity: .32; cursor: default; }
+      .day:disabled { opacity: .58; cursor: default; }
       .schedule-heading { display: flex; align-items: end; justify-content: space-between; margin: 26px 1px 12px; }
       .schedule-heading h2 { margin: 0; font-size: 18px; letter-spacing: -.035em; }
-      .selected-date { margin-top: 4px; color: var(--muted); font-size: 11px; }
+      .selected-date { margin-top: 4px; color: var(--muted); font-size: 12px; }
       .lesson-total { padding: 5px 9px; border-radius: 999px; color: var(--red); background: var(--red-soft); font-size: 10px; font-weight: 750; }
       .timeline { display: grid; gap: 9px; }
       .lesson { display: grid; grid-template-columns: 66px 1fr; gap: 10px; align-items: start; }
       .time-col { padding-top: 15px; text-align: right; }
       .time-start { display: block; font-size: 12px; font-weight: 780; font-variant-numeric: tabular-nums; }
-      .time-end { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+      .time-end { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
       .lesson-card { position: relative; overflow: hidden; padding: 14px 15px 13px 17px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
       .lesson-card::before { position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--red); content: ""; }
       .lesson-top { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
       .lesson-kind { color: var(--red); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
       .week-chip { padding: 3px 6px; border-radius: 5px; color: #596273; background: #eff1f4; font-size: 9px; font-weight: 700; }
       .lesson-title { margin: 7px 0 10px; font-size: 15px; line-height: 1.27; font-weight: 760; letter-spacing: -.02em; }
-      .lesson-meta { display: flex; flex-wrap: wrap; gap: 7px 14px; color: var(--muted); font-size: 10px; line-height: 1.35; }
+      .lesson-meta { display: flex; flex-wrap: wrap; gap: 7px 14px; color: var(--muted); font-size: 11px; line-height: 1.4; }
       .meta-item { display: inline-flex; align-items: flex-start; gap: 5px; }
-      .meta-icon { color: #9aa1aa; font-size: 11px; }
-      .details { margin-top: 10px; border-top: 1px solid #eef0f2; padding-top: 8px; color: #777f8d; font-size: 10px; }
+      .meta-icon { color: #657286; font-size: 12px; }
+      .details { margin-top: 10px; border-top: 1px solid #e9edf2; padding-top: 8px; color: #596679; font-size: 11px; }
       .details summary { cursor: pointer; font-weight: 650; }
       .details-list { display: grid; gap: 3px; margin: 7px 0 0; padding-left: 14px; line-height: 1.4; }
-      .empty, .loading, .error { padding: 26px 20px; border: 1px dashed #cfd3d8; border-radius: 15px; color: var(--muted); background: rgb(255 255 255 / 45%); text-align: center; font-size: 12px; line-height: 1.6; }
+      .empty, .loading, .error { padding: 26px 20px; border: 1px dashed #c6ced9; border-radius: 15px; color: var(--muted); background: var(--surface); text-align: center; font-size: 13px; line-height: 1.6; }
       .error { border-color: #e4a8b1; color: #8e2635; background: #fff6f7; }
-      .footer { margin: 22px 4px 0; color: #858c95; font-size: 10px; line-height: 1.55; text-align: center; }
+      .footer { margin: 22px 4px 0; color: #596679; font-size: 11px; line-height: 1.55; text-align: center; }
+      @media (hover: hover) {
+        .icon-btn:not(:disabled):hover { border-color: #c6ced9; background: var(--surface); transform: translateY(-1px); }
+        .day:not(:disabled):hover { background: #e9edf2; }
+      }
+      .icon-btn:not(:disabled):active, .day:not(:disabled):active { transform: scale(.97); }
+      @media (prefers-reduced-motion: no-preference) {
+        .lesson { animation: lesson-enter .24s ease both; }
+        .lesson:nth-child(2) { animation-delay: .025s; }
+        .lesson:nth-child(3) { animation-delay: .05s; }
+        .lesson:nth-child(4) { animation-delay: .075s; }
+        @keyframes lesson-enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+      }
       @media (min-width: 620px) {
         .app { padding-right: 28px; padding-left: 28px; }
         .masthead { margin-right: -28px; margin-left: -28px; padding-right: 28px; padding-left: 28px; }
-        .group-panel { grid-template-columns: 1fr auto; padding: 19px 20px; }
+        .group-panel { padding: 19px 20px; }
         .timeline { gap: 11px; }
         .lesson-card { padding: 16px 18px 15px 20px; }
       }
@@ -107,6 +127,9 @@
         .day-date { width: 28px; height: 28px; }
         .lesson { grid-template-columns: 56px 1fr; gap: 8px; }
         .time-start { font-size: 11px; }
+      }
+      @media (max-width: 480px) {
+        .group-fields { grid-template-columns: 1fr; gap: 11px; }
       }
     </style>
   </head>
@@ -124,7 +147,10 @@
 
       <div class="content">
         <section class="group-panel" aria-label="Выбор группы">
-          <div><label class="field-label" for="group-select">Моя группа</label><input class="group-select" id="group-select" type="text" list="group-options" inputmode="numeric" autocomplete="off" placeholder="Выберите или введите код" disabled /><datalist id="group-options"></datalist></div>
+          <div class="group-fields">
+            <div class="group-field"><label class="field-label" for="group-input">Ввести номер группы</label><input class="group-select" id="group-input" type="text" inputmode="numeric" autocomplete="off" placeholder="Например, 10111126" disabled /></div>
+            <div class="group-field"><label class="field-label" for="group-picker">Выбрать из списка</label><select class="group-select" id="group-picker" disabled><option value="">Загружаю список…</option></select></div>
+          </div>
           <span class="faculty-count" id="group-count"></span>
           <div class="group-meta" id="faculty-name">Расписание первого курса БНТУ</div>
         </section>
@@ -149,10 +175,8 @@
       const tg = window.Telegram?.WebApp;
       tg?.ready();
       tg?.expand();
-      if (tg?.themeParams?.bg_color) {
-        document.documentElement.style.setProperty('--paper', tg.themeParams.bg_color);
-        document.documentElement.style.setProperty('--text', tg.themeParams.text_color || '#172236');
-      }
+      tg?.setHeaderColor?.('#101d32');
+      tg?.setBackgroundColor?.('#ffffff');
 
       const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
       const dayLong = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
@@ -165,11 +189,217 @@
       let groups = [];
       let currentGroup = null;
 
+      const weekdays = new Map(['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'].map((day, index) => [day, index]));
+      const groupCodePattern = /(?<!\d)(1\d{6}26)(?!\d)/;
+      const timePattern = /(?<!\d)(\d{1,2})[.:](\d{2})(?!\d)/g;
+      const facultyNames = {
+        'АТФ': 'Автотракторный факультет',
+        'ФГДИЭ': 'Факультет горного дела и инженерной экологии',
+        'МСФ': 'Машиностроительный факультет',
+        'МТФ': 'Механико-технологический факультет',
+        'ФММП': 'Факультет маркетинга, менеджмента и предпринимательства',
+        'ЭФ': 'Энергетический факультет',
+        'ФИТР': 'Факультет информационных технологий и робототехники',
+        'ФТУГ': 'Факультет технологий управления и гуманитаризации',
+        'ИПФ': 'Инженерно-педагогический факультет',
+        'ФЭС': 'Факультет энергетического строительства',
+        'СФ': 'Строительный факультет',
+        'ПСФ': 'Приборостроительный факультет',
+        'ФТК': 'Факультет транспортных коммуникаций',
+        'СТФ': 'Спортивно-технический факультет'
+      };
+
       const $ = selector => document.querySelector(selector);
       const atMidnight = date => new Date(date.getFullYear(), date.getMonth(), date.getDate());
       const mondayOf = date => { const result = atMidnight(date); result.setDate(result.getDate() - (result.getDay() + 6) % 7); return result; };
       const sameDay = (left, right) => atMidnight(left).getTime() === atMidnight(right).getTime();
       const academicWeek = date => Math.floor((atMidnight(date) - termStart) / (7 * 24 * 60 * 60 * 1000)) + 1;
+
+      function clean(value) {
+        return value == null ? '' : String(value).replace(/\s+/g, ' ').trim();
+      }
+
+      function collapseSpacedLetters(value) {
+        const pieces = String(value || '').trim().split(/(\s+)/);
+        let result = '';
+        let run = '';
+        for (const piece of pieces) {
+          if (!piece) continue;
+          if (/^\s+$/.test(piece)) {
+            if (piece.length >= 4) {
+              result += run;
+              run = '';
+              result += ' ';
+            }
+          } else if (piece.length === 1 && /[A-Za-zА-Яа-яЁё]/.test(piece)) {
+            run += piece;
+          } else {
+            result += run;
+            run = '';
+            result += piece;
+          }
+        }
+        result += run;
+        return result.replace(/\s+/g, ' ').trim();
+      }
+
+      function cellValue(sheet, row, column) {
+        const cell = sheet[XLSX.utils.encode_cell({ r: row - 1, c: column - 1 })];
+        return cell ? (cell.w ?? cell.v) : '';
+      }
+
+      function facultyName(sheet, column, sheetName) {
+        for (const row of [10, 11]) {
+          const candidates = [];
+          for (let col = 3; col <= column; col++) {
+            const value = cellValue(sheet, row, col);
+            if (value !== '' && value != null) candidates.push(collapseSpacedLetters(value));
+          }
+          const matches = candidates.filter(item => !['дни', 'часы'].includes(item.toLowerCase()) && item.toLowerCase().includes('факультет'));
+          if (matches.length) return matches[matches.length - 1];
+        }
+        return clean(sheetName).replace(/1 курс/i, '').trim();
+      }
+
+      function lessonFields(rawParts, week = null) {
+        rawParts = [...new Set(rawParts.map(clean).filter(Boolean))];
+        const text = rawParts.join('\n');
+        const low = text.toLowerCase();
+        let type = null;
+        for (const [pattern, label] of [[/лекцион/, 'Лекция'], [/практическ/, 'Практика'], [/лабораторн|лаб\.занят/, 'Лабораторная'], [/семинар/, 'Семинар']]) {
+          if (pattern.test(low)) { type = label; break; }
+        }
+        const weeks = week ? [week] : [...new Set([...low.matchAll(/(?<!\d)([12])\s*(?:нед\.?|недел\w*)/g)].map(match => Number(match[1])))].sort();
+        const dates = [...text.matchAll(/\b\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?\b/g)].map(match => match[0]);
+        const teacherMatch = /\b(?:ст\s*\.\s*пр\.?|доц\.?|проф\.?|преп\.?|пр\.)(?=\s*[А-ЯЁ])/i.exec(text);
+        let teacher = teacherMatch ? clean(text.slice(teacherMatch.index)) : '';
+        const roomMatch = /\b(?:ауд(?:итория)?\.?\s*|а\.?\s*|лаб\.?\s*)\d{1,4}[А-ЯЁа-яё]?(?:\s*к\.?\s*\d{1,2})?/i.exec(text);
+        let room = roomMatch ? clean(roomMatch[0]) : '';
+        if (teacherMatch && roomMatch && roomMatch.index > teacherMatch.index) teacher = clean(text.slice(teacherMatch.index, roomMatch.index));
+        const subjects = [];
+        for (const part of rawParts) {
+          let subject = part.replace(/^\s*[12]\s*(?:нед\.?|недел\w*)\s*/i, '')
+            .replace(/\([^)]*(?:лекцион|практическ|лабораторн|оиз)[^)]*\)\s*/i, '')
+            .replace(/^\s*\([^)]*\)\s*/, '').replace(/^\s*\d{1,2}[.:]\d{2}\s*/, '')
+            .replace(/^\s*(?:\d{1,2}[./]\d{1,2}\s*;?\s*)+/, '');
+          const partRoom = /\b(?:ауд(?:итория)?\.?\s*|а\.?\s*|лаб\.?\s*)\d{1,4}[А-ЯЁа-яё]?(?:\s*к\.?\s*\d{1,2})?/i.exec(subject);
+          const partTeacher = /\b(?:ст\s*\.\s*пр\.?|доц\.?|проф\.?|преп\.?|пр\.)(?=\s*[А-ЯЁ])/i.exec(subject);
+          const cuts = [partRoom, partTeacher].filter(Boolean).map(match => match.index);
+          if (cuts.length) subject = subject.slice(0, Math.min(...cuts));
+          subject = clean(subject.replace(/\b[12]\s*(?:нед\.?|недел\w*)\b/gi, '')).replace(/^[ .,:;–—-]+|[ .,:;–—-]+$/g, '');
+          if (/[А-ЯЁа-яёA-Za-z]{3}/.test(subject) && !/^(?:аудитория|практическое занятие|лекционное занятие|лабораторное занятие)$/i.test(subject)) subjects.push(subject);
+        }
+        const roomParts = room ? [room] : [];
+        for (const part of rawParts) {
+          if (/^\d{2,4}[А-ЯЁа-яё]?$/i.test(part) || /^\d{2,4}(?:\s*,\s*\d{2,4})+$/.test(part)) roomParts.push(part);
+          else if (/^к\.?\s*\d{1,2}$/i.test(part)) roomParts.push(part.replace(/\s+/g, ' '));
+        }
+        return {
+          title: subjects.sort((a, b) => b.length - a.length)[0] || rawParts.find(part => /[А-ЯЁа-яёA-Za-z]{3}/.test(part)) || text,
+          type,
+          weeks,
+          dates,
+          room: [...new Set(roomParts)].join(', '),
+          teacher,
+          details: rawParts
+        };
+      }
+
+      function parseScheduleWorkbook(workbook) {
+        const result = new Map();
+        for (const sheetName of workbook.SheetNames) {
+          const sheet = workbook.Sheets[sheetName];
+          const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1:A1');
+          const headers = [];
+          for (let row = 1; row <= Math.min(15, range.e.r + 1); row++) {
+            for (let column = 1; column <= range.e.c + 1; column++) {
+              const value = cellValue(sheet, row, column);
+              let id = '';
+              let label = '';
+              if (typeof value === 'number' && Math.trunc(value) >= 10000000) id = label = String(Math.trunc(value));
+              else if (typeof value === 'string') {
+                const match = value.match(groupCodePattern);
+                if (!match) continue;
+                id = match[1];
+                label = clean(value);
+              } else continue;
+              const faculty = clean(sheetName).replace(/\s*1.*$/i, '').trim();
+              headers.push({ id, label, column, faculty, facultyName: facultyNames[faculty] || facultyName(sheet, column, sheetName) });
+            }
+          }
+          const uniqueHeaders = [...new Map(headers.map(header => [`${header.id}:${header.column}`, header])).values()];
+          let currentDay = null;
+          const slots = [];
+          for (let row = 1; row <= range.e.r + 1; row++) {
+            const dayText = clean(cellValue(sheet, row, 1)).toLowerCase();
+            if (weekdays.has(dayText)) currentDay = weekdays.get(dayText);
+            const timeText = clean(cellValue(sheet, row, 2));
+            const times = [...timeText.matchAll(timePattern)];
+            timePattern.lastIndex = 0;
+            if (times.length && currentDay !== null) {
+              const norm = match => `${String(Number(match[1])).padStart(2, '0')}:${match[2]}`;
+              slots.push({ row, day: currentDay, timeText, start: norm(times[0]), end: norm(times[times.length - 1]) });
+            }
+          }
+          for (const header of uniqueHeaders) {
+            if (!result.has(header.id)) result.set(header.id, { id: header.id, label: header.label, faculty: header.faculty, facultyName: header.facultyName, lessons: [] });
+            const target = result.get(header.id);
+            for (const slot of slots) {
+              const endRow = Math.min(range.e.r + 1, slot.row + 3);
+              const parts = [];
+              for (let row = slot.row; row <= endRow; row++) {
+                for (let column = header.column; column <= Math.min(range.e.c + 1, header.column + 3); column++) {
+                  const raw = clean(cellValue(sheet, row, column));
+                  if (!raw || row < 15 || /^с 0?1\.09/i.test(raw) || weekdays.has(raw.toLowerCase()) || raw.toLowerCase().includes('учебных занятий студентов')) continue;
+                  parts.push(raw);
+                }
+              }
+              if (!parts.length) continue;
+              const weekSpecific = { 1: [], 2: [] };
+              const common = [];
+              for (const raw of parts) {
+                const marked = [...new Set([...raw.matchAll(/(?<!\d)([12])\s*(?:нед\.?|недел\w*)/gi)].map(match => Number(match[1])))];
+                if (marked.length) marked.forEach(week => weekSpecific[week].push(raw));
+                else common.push(raw);
+              }
+              const variants = (weekSpecific[1].length || weekSpecific[2].length)
+                ? [1, 2].filter(week => weekSpecific[week].length).map(week => [week, [...new Set([...common, ...weekSpecific[week]])]])
+                : [[null, [...new Set(common)]]];
+              for (const [week, variantParts] of variants) {
+                const fields = lessonFields(variantParts, week);
+                const groupTime = variantParts.map(part => new RegExp(timePattern.source, 'g').exec(part)).find(Boolean);
+                const hasExplicitTime = variantParts.some(part => /^\s*\d{1,2}[.:]\d{2}/.test(part));
+                const lesson = {
+                  day: slot.day,
+                  start: groupTime && hasExplicitTime ? `${String(Number(groupTime[1])).padStart(2, '0')}:${groupTime[2]}` : slot.start,
+                  end: groupTime && hasExplicitTime ? null : slot.end,
+                  timeLabel: slot.timeText,
+                  sourceRow: slot.row,
+                  sourceCells: [],
+                  ...fields
+                };
+                for (let row = slot.row; row <= endRow; row++) {
+                  for (let column = header.column; column <= Math.min(range.e.c + 1, header.column + 3); column++) {
+                    if (variantParts.includes(clean(cellValue(sheet, row, column)))) lesson.sourceCells.push(XLSX.utils.encode_cell({ r: row - 1, c: column - 1 }));
+                  }
+                }
+                const identity = JSON.stringify([lesson.day, lesson.start, lesson.end, lesson.sourceCells, lesson.details]);
+                if (!target._seen) target._seen = new Set();
+                if (!target._seen.has(identity)) {
+                  target._seen.add(identity);
+                  target.lessons.push(lesson);
+                }
+              }
+            }
+          }
+        }
+        groups = [...result.values()].map(group => {
+          delete group._seen;
+          group.lessons.sort((a, b) => a.day - b.day || a.start.localeCompare(b.start) || a.sourceRow - b.sourceRow || a.sourceCells.join(',').localeCompare(b.sourceCells.join(',')));
+          return group;
+        });
+        return groups;
+      }
 
       function addText(tag, className, value) {
         const node = document.createElement(tag);
@@ -264,7 +494,7 @@
         const lessons = visibleLessons(dayIndex);
         $('#day-title').textContent = `${dayLong[dayIndex][0].toUpperCase()}${dayLong[dayIndex].slice(1)}`;
         $('#date-label').textContent = ruDate.format(selectedDate);
-        const enteredCode = $('#group-select').value.trim();
+        const enteredCode = $('#group-input').value.trim();
         $('#lesson-count').textContent = !currentGroup ? enteredCode ? 'Проверьте код' : 'Выберите группу' : lessons.length ? `${lessons.length} ${lessons.length === 1 ? 'пара' : 'пар'}` : 'Выходной';
         const host = $('#schedule'); host.replaceChildren();
         if (!lessons.length) {
@@ -285,9 +515,10 @@
       }
 
       function populateGroups() {
-        const input = $('#group-select');
-        const suggestions = $('#group-options');
-        suggestions.replaceChildren();
+        const input = $('#group-input');
+        const picker = $('#group-picker');
+        picker.replaceChildren(addText('option', '', 'Выберите группу…'));
+        picker.options[0].value = '';
         const previous = localStorage.getItem('bntu-group');
         const faculties = new Map();
         for (const group of groups) {
@@ -295,37 +526,55 @@
           faculties.get(group.faculty).push(group);
         }
         [...faculties.entries()].sort(([a], [b]) => a.localeCompare(b, 'ru')).forEach(([faculty, facultyGroups]) => {
+          const optgroup = document.createElement('optgroup');
+          optgroup.label = facultyGroups[0]?.facultyName || faculty || 'БНТУ';
           facultyGroups.sort((a, b) => a.id.localeCompare(b.id, 'ru')).forEach(group => {
             const option = document.createElement('option');
             option.value = group.id;
-            option.label = `${group.facultyName || faculty} · ${group.label}`;
-            suggestions.append(option);
+            option.textContent = group.label && group.label !== group.id ? `${group.id} · ${group.label}` : group.id;
+            optgroup.append(option);
           });
+          picker.append(optgroup);
         });
         input.disabled = false;
+        picker.disabled = false;
         input.value = groups.some(group => group.id === previous) ? previous : groups[0]?.id || '';
+        picker.value = input.value;
         currentGroup = groups.find(group => group.id === input.value);
         updateGroupMeta();
         $('#group-count').textContent = `${groups.length} групп`;
         input.addEventListener('input', handleGroupInput);
         input.addEventListener('change', handleGroupInput);
+        picker.addEventListener('change', handleGroupPick);
       }
 
       function handleGroupInput() {
-        const input = $('#group-select');
+        const input = $('#group-input');
+        const picker = $('#group-picker');
         const code = input.value.trim().replace(/\s+/g, '');
         currentGroup = groups.find(group => group.id === code || group.label === code) || null;
         if (currentGroup) {
           input.value = currentGroup.id;
+          picker.value = currentGroup.id;
           localStorage.setItem('bntu-group', currentGroup.id);
-        }
+        } else picker.value = '';
+        updateGroupMeta();
+        render();
+      }
+
+      function handleGroupPick() {
+        const picker = $('#group-picker');
+        const input = $('#group-input');
+        currentGroup = groups.find(group => group.id === picker.value) || null;
+        input.value = currentGroup?.id || '';
+        if (currentGroup) localStorage.setItem('bntu-group', currentGroup.id);
         updateGroupMeta();
         render();
       }
 
       function updateGroupMeta() {
         const meta = $('#faculty-name');
-        const hasInput = Boolean($('#group-select').value.trim());
+        const hasInput = Boolean($('#group-input').value.trim());
         meta.classList.toggle('invalid', !currentGroup && hasInput);
         meta.textContent = currentGroup
           ? currentGroup.facultyName || currentGroup.faculty || 'БНТУ'
@@ -335,17 +584,20 @@
       $('#prev-week').addEventListener('click', () => { if ($('#prev-week').disabled) return; selectedDate.setDate(selectedDate.getDate() - 7); render(); });
       $('#next-week').addEventListener('click', () => { if ($('#next-week').disabled) return; selectedDate.setDate(selectedDate.getDate() + 7); render(); });
 
-      fetch('./schedule.json')
-        .then(response => { if (!response.ok) throw new Error('Не удалось загрузить schedule.json'); return response.json(); })
-        .then(data => {
-          groups = data.groups || [];
-          if (!groups.length) throw new Error('В файле schedule.json нет групп.');
+      fetch('./data/schedule-source.xlsx')
+        .then(response => { if (!response.ok) throw new Error('Не удалось загрузить Excel-файл расписания.'); return response.arrayBuffer(); })
+        .then(buffer => {
+          if (!window.XLSX) throw new Error('Не загрузился модуль чтения Excel. Проверьте подключение к интернету и обновите страницу.');
+          const workbook = XLSX.read(buffer, { cellDates: false });
+          parseScheduleWorkbook(workbook);
+          if (!groups.length) throw new Error('В Excel-файле не найдены группы расписания.');
           populateGroups(); render();
         })
         .catch(error => {
-          $('#group-select').disabled = true;
+          $('#group-input').disabled = true;
+          $('#group-picker').disabled = true;
           $('#faculty-name').textContent = error.message;
-          const host = $('#schedule'); host.replaceChildren(addText('div', 'error', 'Не удалось загрузить расписание. Проверьте, что schedule.json лежит рядом с index.html и открыт через GitHub Pages или локальный веб-сервер.'));
+          const host = $('#schedule'); host.replaceChildren(addText('div', 'error', 'Не удалось прочитать исходную книгу Excel. Проверьте, что файл лежит в папке data рядом с проектом, и откройте приложение через GitHub Pages или локальный веб-сервер.'));
         });
     </script>
   </body>
