@@ -248,6 +248,11 @@
         return cell ? (cell.w ?? cell.v) : '';
       }
 
+      function rawCellValue(sheet, row, column) {
+        const cell = sheet[XLSX.utils.encode_cell({ r: row - 1, c: column - 1 })];
+        return cell ? cell.v : '';
+      }
+
       function facultyName(sheet, column, sheetName) {
         for (const row of [10, 11]) {
           const candidates = [];
@@ -271,9 +276,11 @@
         }
         const weeks = week ? [week] : [...new Set([...low.matchAll(/(?<!\d)([12])\s*(?:нед\.?|недел\w*)/g)].map(match => Number(match[1])))].sort();
         const dates = [...text.matchAll(/\b\d{1,2}[./]\d{1,2}(?:[./]\d{2,4})?\b/g)].map(match => match[0]);
-        const teacherMatch = /\b(?:ст\s*\.\s*пр\.?|доц\.?|проф\.?|преп\.?|пр\.)(?=\s*[А-ЯЁ])/i.exec(text);
+        const teacherPattern = /(?<![A-Za-zА-Яа-яЁё])(?:ст\s*\.\s*пр\.?|доц\.?|проф\.?|преп\.?|пр\.)(?=\s*[А-ЯЁ])/i;
+        const teacherMatch = teacherPattern.exec(text);
         let teacher = teacherMatch ? clean(text.slice(teacherMatch.index)) : '';
-        const roomMatch = /\b(?:ауд(?:итория)?\.?\s*|а\.?\s*|лаб\.?\s*)\d{1,4}[А-ЯЁа-яё]?(?:\s*к\.?\s*\d{1,2})?/i.exec(text);
+        const roomPattern = /(?<![A-Za-zА-Яа-яЁё])(?:ауд(?:итория)?\.?\s*|а\.?\s*|лаб\.?\s*)\d{1,4}[А-ЯЁа-яё]?(?:\s*к\.?\s*\d{1,2})?/i;
+        const roomMatch = roomPattern.exec(text);
         let room = roomMatch ? clean(roomMatch[0]) : '';
         if (teacherMatch && roomMatch && roomMatch.index > teacherMatch.index) teacher = clean(text.slice(teacherMatch.index, roomMatch.index));
         const subjects = [];
@@ -282,11 +289,11 @@
             .replace(/\([^)]*(?:лекцион|практическ|лабораторн|оиз)[^)]*\)\s*/i, '')
             .replace(/^\s*\([^)]*\)\s*/, '').replace(/^\s*\d{1,2}[.:]\d{2}\s*/, '')
             .replace(/^\s*(?:\d{1,2}[./]\d{1,2}\s*;?\s*)+/, '');
-          const partRoom = /\b(?:ауд(?:итория)?\.?\s*|а\.?\s*|лаб\.?\s*)\d{1,4}[А-ЯЁа-яё]?(?:\s*к\.?\s*\d{1,2})?/i.exec(subject);
-          const partTeacher = /\b(?:ст\s*\.\s*пр\.?|доц\.?|проф\.?|преп\.?|пр\.)(?=\s*[А-ЯЁ])/i.exec(subject);
+          const partRoom = roomPattern.exec(subject);
+          const partTeacher = teacherPattern.exec(subject);
           const cuts = [partRoom, partTeacher].filter(Boolean).map(match => match.index);
           if (cuts.length) subject = subject.slice(0, Math.min(...cuts));
-          subject = clean(subject.replace(/\b[12]\s*(?:нед\.?|недел\w*)\b/gi, '')).replace(/^[ .,:;–—-]+|[ .,:;–—-]+$/g, '');
+          subject = clean(subject.replace(/(?<!\d)[12]\s*(?:нед\.?|недел\w*)/gi, '')).replace(/^[ .,:;–—-]+|[ .,:;–—-]+$/g, '');
           if (/[А-ЯЁа-яёA-Za-z]{3}/.test(subject) && !/^(?:аудитория|практическое занятие|лекционное занятие|лабораторное занятие)$/i.test(subject)) subjects.push(subject);
         }
         const roomParts = room ? [room] : [];
@@ -313,7 +320,7 @@
           const headers = [];
           for (let row = 1; row <= Math.min(15, range.e.r + 1); row++) {
             for (let column = 1; column <= range.e.c + 1; column++) {
-              const value = cellValue(sheet, row, column);
+              const value = rawCellValue(sheet, row, column);
               let id = '';
               let label = '';
               if (typeof value === 'number' && Math.trunc(value) >= 10000000) id = label = String(Math.trunc(value));
@@ -357,9 +364,13 @@
               if (!parts.length) continue;
               const weekSpecific = { 1: [], 2: [] };
               const common = [];
+              let activeWeek = null;
               for (const raw of parts) {
                 const marked = [...new Set([...raw.matchAll(/(?<!\d)([12])\s*(?:нед\.?|недел\w*)/gi)].map(match => Number(match[1])))];
-                if (marked.length) marked.forEach(week => weekSpecific[week].push(raw));
+                if (marked.length) {
+                  marked.forEach(week => weekSpecific[week].push(raw));
+                  activeWeek = marked.length === 1 ? marked[0] : null;
+                } else if (activeWeek) weekSpecific[activeWeek].push(raw);
                 else common.push(raw);
               }
               const variants = (weekSpecific[1].length || weekSpecific[2].length)
