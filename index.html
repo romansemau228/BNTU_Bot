@@ -52,6 +52,8 @@
       .faculty-count { padding-bottom: 10px; color: var(--muted); font-size: 10px; white-space: nowrap; }
       .group-meta { grid-column: 1 / -1; display: flex; align-items: center; gap: 7px; min-height: 15px; color: var(--muted); font-size: 11px; }
       .group-meta::before { width: 5px; height: 5px; border-radius: 50%; background: var(--green); content: ""; }
+      .group-meta.invalid { color: var(--red); }
+      .group-meta.invalid::before { background: var(--red); }
       .week-head { display: flex; align-items: center; justify-content: space-between; margin: 28px 0 12px; }
       .week-copy { display: flex; flex-direction: column; gap: 3px; }
       .week-caption { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
@@ -122,7 +124,7 @@
 
       <div class="content">
         <section class="group-panel" aria-label="Выбор группы">
-          <div><label class="field-label" for="group-select">Моя группа</label><select class="group-select" id="group-select" disabled><option>Загрузка групп…</option></select></div>
+          <div><label class="field-label" for="group-select">Моя группа</label><input class="group-select" id="group-select" type="text" list="group-options" inputmode="numeric" autocomplete="off" placeholder="Выберите или введите код" disabled /><datalist id="group-options"></datalist></div>
           <span class="faculty-count" id="group-count"></span>
           <div class="group-meta" id="faculty-name">Расписание первого курса БНТУ</div>
         </section>
@@ -262,10 +264,16 @@
         const lessons = visibleLessons(dayIndex);
         $('#day-title').textContent = `${dayLong[dayIndex][0].toUpperCase()}${dayLong[dayIndex].slice(1)}`;
         $('#date-label').textContent = ruDate.format(selectedDate);
-        $('#lesson-count').textContent = lessons.length ? `${lessons.length} ${lessons.length === 1 ? 'пара' : 'пар'}` : 'Выходной';
+        const enteredCode = $('#group-select').value.trim();
+        $('#lesson-count').textContent = !currentGroup ? enteredCode ? 'Проверьте код' : 'Выберите группу' : lessons.length ? `${lessons.length} ${lessons.length === 1 ? 'пара' : 'пар'}` : 'Выходной';
         const host = $('#schedule'); host.replaceChildren();
         if (!lessons.length) {
-          host.append(addText('div', 'empty', 'На этот день занятий нет.'));
+          const message = currentGroup
+            ? 'На этот день занятий нет.'
+            : enteredCode
+              ? 'Такого кода нет в загруженном расписании. Проверьте номер группы и попробуйте ещё раз.'
+              : 'Введите номер группы или выберите его из списка.';
+          host.append(addText('div', 'empty', message));
           return;
         }
         lessons.forEach(lesson => host.append(renderLesson(lesson)));
@@ -277,8 +285,9 @@
       }
 
       function populateGroups() {
-        const select = $('#group-select');
-        select.replaceChildren();
+        const input = $('#group-select');
+        const suggestions = $('#group-options');
+        suggestions.replaceChildren();
         const previous = localStorage.getItem('bntu-group');
         const faculties = new Map();
         for (const group of groups) {
@@ -286,30 +295,41 @@
           faculties.get(group.faculty).push(group);
         }
         [...faculties.entries()].sort(([a], [b]) => a.localeCompare(b, 'ru')).forEach(([faculty, facultyGroups]) => {
-          const optgroup = document.createElement('optgroup');
-          optgroup.label = facultyGroups[0].facultyName || faculty;
           facultyGroups.sort((a, b) => a.id.localeCompare(b.id, 'ru')).forEach(group => {
             const option = document.createElement('option');
             option.value = group.id;
-            option.textContent = group.label;
-            optgroup.append(option);
+            option.label = `${group.facultyName || faculty} · ${group.label}`;
+            suggestions.append(option);
           });
-          select.append(optgroup);
         });
-        select.disabled = false;
-        select.value = groups.some(group => group.id === previous) ? previous : groups[0]?.id;
-        currentGroup = groups.find(group => group.id === select.value);
+        input.disabled = false;
+        input.value = groups.some(group => group.id === previous) ? previous : groups[0]?.id || '';
+        currentGroup = groups.find(group => group.id === input.value);
         updateGroupMeta();
         $('#group-count').textContent = `${groups.length} групп`;
-        select.addEventListener('change', () => {
-          localStorage.setItem('bntu-group', select.value);
-          currentGroup = groups.find(group => group.id === select.value);
-          updateGroupMeta(); render();
-        });
+        input.addEventListener('input', handleGroupInput);
+        input.addEventListener('change', handleGroupInput);
+      }
+
+      function handleGroupInput() {
+        const input = $('#group-select');
+        const code = input.value.trim().replace(/\s+/g, '');
+        currentGroup = groups.find(group => group.id === code || group.label === code) || null;
+        if (currentGroup) {
+          input.value = currentGroup.id;
+          localStorage.setItem('bntu-group', currentGroup.id);
+        }
+        updateGroupMeta();
+        render();
       }
 
       function updateGroupMeta() {
-        $('#faculty-name').textContent = currentGroup?.facultyName || currentGroup?.faculty || 'БНТУ';
+        const meta = $('#faculty-name');
+        const hasInput = Boolean($('#group-select').value.trim());
+        meta.classList.toggle('invalid', !currentGroup && hasInput);
+        meta.textContent = currentGroup
+          ? currentGroup.facultyName || currentGroup.faculty || 'БНТУ'
+          : hasInput ? 'Код группы не найден' : 'Введите код группы из исходного расписания';
       }
 
       $('#prev-week').addEventListener('click', () => { if ($('#prev-week').disabled) return; selectedDate.setDate(selectedDate.getDate() - 7); render(); });
@@ -323,7 +343,7 @@
           populateGroups(); render();
         })
         .catch(error => {
-          $('#group-select').replaceChildren(new Option('Нет данных', ''));
+          $('#group-select').disabled = true;
           $('#faculty-name').textContent = error.message;
           const host = $('#schedule'); host.replaceChildren(addText('div', 'error', 'Не удалось загрузить расписание. Проверьте, что schedule.json лежит рядом с index.html и открыт через GitHub Pages или локальный веб-сервер.'));
         });
