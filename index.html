@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f5f4f0" />
+    <title>Пары — расписание</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      :root {
+        color-scheme: light;
+        --page: var(--tg-theme-bg-color, #f5f4f0);
+        --card: var(--tg-theme-secondary-bg-color, #fffefa);
+        --text: var(--tg-theme-text-color, #20211f);
+        --muted: var(--tg-theme-hint-color, #898a83);
+        --accent: var(--tg-theme-button-color, #305b49);
+        --accent-text: var(--tg-theme-button-text-color, #ffffff);
+        --line: color-mix(in srgb, var(--text) 9%, transparent);
+        --soft: color-mix(in srgb, var(--accent) 9%, var(--page));
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: var(--text);
+        background: var(--page);
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; background: var(--page); }
+      button { color: inherit; font: inherit; }
+      .app { width: min(100%, 520px); margin: 0 auto; padding: 24px 20px calc(28px + env(safe-area-inset-bottom)); }
+      .topline { display: flex; align-items: center; justify-content: space-between; margin-bottom: 27px; }
+      .brand { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 750; letter-spacing: -.02em; }
+      .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 12px; background: var(--accent); color: var(--accent-text); }
+      .demo { padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 11px; font-weight: 650; }
+      .eyebrow { color: var(--muted); font-size: 12px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
+      h1 { margin: 7px 0 5px; font-size: clamp(31px, 9vw, 40px); line-height: 1.08; letter-spacing: -.055em; }
+      .subtitle { margin: 0; color: var(--muted); font-size: 14px; }
+      .group-card { display: flex; align-items: center; justify-content: space-between; margin-top: 22px; padding: 15px 16px; border: 1px solid var(--line); border-radius: 18px; background: var(--card); }
+      .group-label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 11px; }
+      .group-value { font-size: 14px; font-weight: 700; }
+      .group-arrow { color: var(--muted); font-size: 18px; }
+      .week-row { display: flex; align-items: center; justify-content: space-between; margin: 27px 0 13px; }
+      .week-title { font-size: 14px; font-weight: 750; }
+      .week-controls { display: flex; gap: 7px; }
+      .icon-btn { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 11px; background: var(--card); cursor: pointer; }
+      .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; }
+      .day { min-width: 0; padding: 10px 0 9px; border: 1px solid transparent; border-radius: 15px; background: transparent; text-align: center; cursor: pointer; }
+      .day-name { display: block; margin-bottom: 8px; color: var(--muted); font-size: 10px; font-weight: 650; }
+      .day-num { display: grid; place-items: center; width: 32px; height: 32px; margin: auto; border-radius: 11px; font-size: 13px; font-weight: 700; }
+      .day.active { border-color: var(--line); background: var(--card); }
+      .day.active .day-num { background: var(--accent); color: var(--accent-text); }
+      .day.today .day-name { color: var(--accent); }
+      .section-head { display: flex; align-items: baseline; justify-content: space-between; margin: 27px 1px 13px; }
+      .section-head h2 { margin: 0; font-size: 17px; letter-spacing: -.03em; }
+      .class-count { color: var(--muted); font-size: 12px; }
+      .timeline { display: grid; gap: 10px; }
+      .lesson { display: grid; grid-template-columns: 53px 1fr; gap: 11px; }
+      .time { padding-top: 16px; color: var(--muted); font-size: 11px; font-weight: 650; font-variant-numeric: tabular-nums; }
+      .lesson-card { position: relative; overflow: hidden; padding: 15px 15px 14px 17px; border: 1px solid var(--line); border-radius: 17px; background: var(--card); }
+      .lesson-card::before { position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--lesson-color, var(--accent)); content: ""; }
+      .lesson-type { color: var(--lesson-color, var(--accent)); font-size: 10px; font-weight: 750; letter-spacing: .035em; text-transform: uppercase; }
+      .lesson-title { margin: 6px 0 11px; font-size: 15px; font-weight: 730; letter-spacing: -.025em; }
+      .lesson-meta { display: flex; flex-wrap: wrap; gap: 7px 13px; color: var(--muted); font-size: 11px; }
+      .meta-item { display: inline-flex; align-items: center; gap: 5px; }
+      .empty { padding: 26px 20px; border: 1px dashed var(--line); border-radius: 17px; color: var(--muted); text-align: center; font-size: 13px; line-height: 1.6; }
+      .note { margin: 20px 2px 0; color: var(--muted); font-size: 11px; line-height: 1.5; text-align: center; }
+      @media (prefers-reduced-motion: no-preference) { .day, .lesson-card { transition: background .16s ease, border-color .16s ease; } }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header class="topline">
+        <div class="brand"><span class="brand-mark" aria-hidden="true">П</span><span>Пары</span></div>
+        <span class="demo">ДЕМО</span>
+      </header>
+
+      <section aria-labelledby="page-title">
+        <div class="eyebrow" id="today-label">Расписание на сегодня</div>
+        <h1 id="page-title">Привет!</h1>
+        <p class="subtitle" id="date-label"></p>
+      </section>
+
+      <button class="group-card" id="group-button" type="button" aria-label="Выбрать учебную группу">
+        <span><span class="group-label">Моя группа</span><span class="group-value" id="group-name">ИВТ-21</span></span>
+        <span class="group-arrow" aria-hidden="true">⌄</span>
+      </button>
+
+      <section aria-label="Выбор дня">
+        <div class="week-row">
+          <span class="week-title" id="week-label"></span>
+          <div class="week-controls">
+            <button class="icon-btn" id="prev-week" type="button" aria-label="Предыдущая неделя">‹</button>
+            <button class="icon-btn" id="next-week" type="button" aria-label="Следующая неделя">›</button>
+          </div>
+        </div>
+        <div class="days" id="days"></div>
+      </section>
+
+      <section aria-live="polite">
+        <div class="section-head"><h2 id="selected-day-title"></h2><span class="class-count" id="class-count"></span></div>
+        <div class="timeline" id="schedule"></div>
+      </section>
+      <p class="note">Расписание показано для примера. Подключите данные своего вуза, чтобы увидеть актуальные пары.</p>
+    </main>
+
+    <script>
+      const tg = window.Telegram?.WebApp;
+      tg?.ready();
+      tg?.expand();
+      if (tg?.themeParams) {
+        const root = document.documentElement;
+        const colors = { '--tg-theme-bg-color': tg.themeParams.bg_color, '--tg-theme-secondary-bg-color': tg.themeParams.secondary_bg_color, '--tg-theme-text-color': tg.themeParams.text_color, '--tg-theme-hint-color': tg.themeParams.hint_color, '--tg-theme-button-color': tg.themeParams.button_color, '--tg-theme-button-text-color': tg.themeParams.button_text_color };
+        Object.entries(colors).forEach(([key, value]) => value && root.style.setProperty(key, value));
+      }
+
+      const demoSchedule = {
+        1: [
+          { start: '09:00', end: '10:30', type: 'Лекция', title: 'Алгоритмы и структуры данных', teacher: 'И. В. Смирнов', room: 'ауд. 304', color: '#5479a8' },
+          { start: '10:45', end: '12:15', type: 'Практика', title: 'Дискретная математика', teacher: 'А. П. Козлова', room: 'ауд. 218', color: '#bc8050' },
+          { start: '13:00', end: '14:30', type: 'Лабораторная', title: 'Основы веб-разработки', teacher: 'М. А. Иванов', room: 'лаб. 12', color: '#56816a' },
+        ],
+        2: [
+          { start: '10:45', end: '12:15', type: 'Лекция', title: 'Базы данных', teacher: 'Е. Н. Петрова', room: 'ауд. 411', color: '#5479a8' },
+          { start: '12:30', end: '14:00', type: 'Практика', title: 'Теория вероятностей', teacher: 'С. В. Орлов', room: 'ауд. 226', color: '#bc8050' },
+        ],
+        3: [
+          { start: '09:00', end: '10:30', type: 'Практика', title: 'Алгоритмы и структуры данных', teacher: 'И. В. Смирнов', room: 'ауд. 315', color: '#bc8050' },
+          { start: '10:45', end: '12:15', type: 'Лекция', title: 'Операционные системы', teacher: 'Д. Р. Волков', room: 'ауд. 502', color: '#5479a8' },
+          { start: '14:15', end: '15:45', type: 'Лабораторная', title: 'Базы данных', teacher: 'Е. Н. Петрова', room: 'лаб. 8', color: '#56816a' },
+        ],
+        4: [
+          { start: '09:00', end: '10:30', type: 'Лекция', title: 'Теория вероятностей', teacher: 'С. В. Орлов', room: 'ауд. 220', color: '#5479a8' },
+          { start: '10:45', end: '12:15', type: 'Практика', title: 'Операционные системы', teacher: 'Д. Р. Волков', room: 'ауд. 503', color: '#bc8050' },
+        ],
+        5: [
+          { start: '09:00', end: '10:30', type: 'Лабораторная', title: 'Основы веб-разработки', teacher: 'М. А. Иванов', room: 'лаб. 12', color: '#56816a' },
+          { start: '10:45', end: '12:15', type: 'Лекция', title: 'Дискретная математика', teacher: 'А. П. Козлова', room: 'ауд. 218', color: '#5479a8' },
+        ],
+        6: [], 0: [],
+      };
+
+      const weekdayShort = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
+      const weekdayLong = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
+      const monthNames = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+      const mondayOffset = date => (date.getDay() + 6) % 7;
+      const atMidnight = date => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      let weekStart = atMidnight(new Date());
+      weekStart.setDate(weekStart.getDate() - mondayOffset(weekStart));
+      let selectedDate = atMidnight(new Date());
+      const dateLabel = document.querySelector('#date-label');
+      const daysNode = document.querySelector('#days');
+
+      function render() {
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        document.querySelector('#week-label').textContent = weekStart.getMonth() === weekEnd.getMonth()
+          ? `${weekStart.getDate()}–${weekEnd.getDate()} ${monthNames[weekEnd.getMonth()]}`
+          : `${weekStart.getDate()} ${monthNames[weekStart.getMonth()]} – ${weekEnd.getDate()} ${monthNames[weekEnd.getMonth()]}`;
+        const today = atMidnight(new Date());
+        daysNode.replaceChildren();
+        for (let i = 0; i < 7; i++) {
+          const dayDate = new Date(weekStart);
+          dayDate.setDate(dayDate.getDate() + i);
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = `day${dayDate.getTime() === selectedDate.getTime() ? ' active' : ''}${dayDate.getTime() === today.getTime() ? ' today' : ''}`;
+          button.setAttribute('aria-pressed', String(dayDate.getTime() === selectedDate.getTime()));
+          button.innerHTML = `<span class="day-name">${weekdayShort[i]}</span><span class="day-num">${dayDate.getDate()}</span>`;
+          button.addEventListener('click', () => { selectedDate = dayDate; render(); });
+          daysNode.append(button);
+        }
+        dateLabel.textContent = `${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
+        const idx = selectedDate.getDay();
+        const isToday = selectedDate.getTime() === today.getTime();
+        document.querySelector('#today-label').textContent = isToday ? 'Расписание на сегодня' : 'Расписание на выбранный день';
+        document.querySelector('#page-title').textContent = isToday ? 'Привет!' : weekdayLong[idx][0].toUpperCase() + weekdayLong[idx].slice(1);
+        document.querySelector('#selected-day-title').textContent = `${weekdayLong[idx][0].toUpperCase()}${weekdayLong[idx].slice(1)}, ${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]}`;
+        const lessons = demoSchedule[idx] || [];
+        document.querySelector('#class-count').textContent = lessons.length ? `${lessons.length} ${lessons.length === 1 ? 'пара' : lessons.length < 5 ? 'пары' : 'пар'}` : '';
+        const schedule = document.querySelector('#schedule');
+        schedule.replaceChildren();
+        if (!lessons.length) {
+          const empty = document.createElement('div');
+          empty.className = 'empty';
+          empty.textContent = 'На этот день пар нет. Можно выдохнуть или заняться своими делами.';
+          schedule.append(empty);
+          return;
+        }
+        for (const lesson of lessons) {
+          const row = document.createElement('article');
+          row.className = 'lesson';
+          row.innerHTML = `<div class="time">${lesson.start}<br>– ${lesson.end}</div><div class="lesson-card" style="--lesson-color:${lesson.color}"><div class="lesson-type">${lesson.type}</div><h3 class="lesson-title">${lesson.title}</h3><div class="lesson-meta"><span class="meta-item">⌖ ${lesson.room}</span><span class="meta-item">◷ ${lesson.teacher}</span></div></div>`;
+          schedule.append(row);
+        }
+      }
+
+      document.querySelector('#prev-week').addEventListener('click', () => { weekStart.setDate(weekStart.getDate() - 7); selectedDate.setDate(selectedDate.getDate() - 7); render(); });
+      document.querySelector('#next-week').addEventListener('click', () => { weekStart.setDate(weekStart.getDate() + 7); selectedDate.setDate(selectedDate.getDate() + 7); render(); });
+      document.querySelector('#group-button').addEventListener('click', () => tg?.showAlert?.('Выбор группы подключим после настройки расписания вашего вуза.'));
+      render();
+    </script>
+  </body>
+</html>
