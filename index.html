@@ -3,199 +3,330 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#f5f4f0" />
-    <title>Пары — расписание</title>
+    <meta name="theme-color" content="#101d32" />
+    <title>Расписание БНТУ</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
       :root {
         color-scheme: light;
-        --page: var(--tg-theme-bg-color, #f5f4f0);
-        --card: var(--tg-theme-secondary-bg-color, #fffefa);
-        --text: var(--tg-theme-text-color, #20211f);
-        --muted: var(--tg-theme-hint-color, #898a83);
-        --accent: var(--tg-theme-button-color, #305b49);
-        --accent-text: var(--tg-theme-button-text-color, #ffffff);
-        --line: color-mix(in srgb, var(--text) 9%, transparent);
-        --soft: color-mix(in srgb, var(--accent) 9%, var(--page));
+        --navy: #101d32;
+        --navy-soft: #1d2c43;
+        --red: #b61f36;
+        --red-soft: #f6e8eb;
+        --paper: #f4f3ef;
+        --card: #fff;
+        --text: #172236;
+        --muted: #737c89;
+        --line: #e5e7e9;
+        --green: #256b59;
+        --shadow: 0 16px 42px rgb(16 29 50 / 8%);
         font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         color: var(--text);
-        background: var(--page);
+        background: var(--paper);
       }
 
       * { box-sizing: border-box; }
-      body { margin: 0; min-height: 100vh; background: var(--page); }
-      button { color: inherit; font: inherit; }
-      .app { width: min(100%, 520px); margin: 0 auto; padding: 24px 20px calc(28px + env(safe-area-inset-bottom)); }
-      .topline { display: flex; align-items: center; justify-content: space-between; margin-bottom: 27px; }
-      .brand { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 750; letter-spacing: -.02em; }
-      .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 12px; background: var(--accent); color: var(--accent-text); }
-      .demo { padding: 7px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 11px; font-weight: 650; }
-      .eyebrow { color: var(--muted); font-size: 12px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
-      h1 { margin: 7px 0 5px; font-size: clamp(31px, 9vw, 40px); line-height: 1.08; letter-spacing: -.055em; }
-      .subtitle { margin: 0; color: var(--muted); font-size: 14px; }
-      .group-card { display: flex; align-items: center; justify-content: space-between; margin-top: 22px; padding: 15px 16px; border: 1px solid var(--line); border-radius: 18px; background: var(--card); }
-      .group-label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 11px; }
-      .group-value { font-size: 14px; font-weight: 700; }
-      .group-arrow { color: var(--muted); font-size: 18px; }
-      .week-row { display: flex; align-items: center; justify-content: space-between; margin: 27px 0 13px; }
-      .week-title { font-size: 14px; font-weight: 750; }
-      .week-controls { display: flex; gap: 7px; }
-      .icon-btn { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 11px; background: var(--card); cursor: pointer; }
-      .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 7px; }
-      .day { min-width: 0; padding: 10px 0 9px; border: 1px solid transparent; border-radius: 15px; background: transparent; text-align: center; cursor: pointer; }
-      .day-name { display: block; margin-bottom: 8px; color: var(--muted); font-size: 10px; font-weight: 650; }
-      .day-num { display: grid; place-items: center; width: 32px; height: 32px; margin: auto; border-radius: 11px; font-size: 13px; font-weight: 700; }
-      .day.active { border-color: var(--line); background: var(--card); }
-      .day.active .day-num { background: var(--accent); color: var(--accent-text); }
-      .day.today .day-name { color: var(--accent); }
-      .section-head { display: flex; align-items: baseline; justify-content: space-between; margin: 27px 1px 13px; }
-      .section-head h2 { margin: 0; font-size: 17px; letter-spacing: -.03em; }
-      .class-count { color: var(--muted); font-size: 12px; }
-      .timeline { display: grid; gap: 10px; }
-      .lesson { display: grid; grid-template-columns: 53px 1fr; gap: 11px; }
-      .time { padding-top: 16px; color: var(--muted); font-size: 11px; font-weight: 650; font-variant-numeric: tabular-nums; }
-      .lesson-card { position: relative; overflow: hidden; padding: 15px 15px 14px 17px; border: 1px solid var(--line); border-radius: 17px; background: var(--card); }
-      .lesson-card::before { position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--lesson-color, var(--accent)); content: ""; }
-      .lesson-type { color: var(--lesson-color, var(--accent)); font-size: 10px; font-weight: 750; letter-spacing: .035em; text-transform: uppercase; }
-      .lesson-title { margin: 6px 0 11px; font-size: 15px; font-weight: 730; letter-spacing: -.025em; }
-      .lesson-meta { display: flex; flex-wrap: wrap; gap: 7px 13px; color: var(--muted); font-size: 11px; }
-      .meta-item { display: inline-flex; align-items: center; gap: 5px; }
-      .empty { padding: 26px 20px; border: 1px dashed var(--line); border-radius: 17px; color: var(--muted); text-align: center; font-size: 13px; line-height: 1.6; }
-      .note { margin: 20px 2px 0; color: var(--muted); font-size: 11px; line-height: 1.5; text-align: center; }
-      @media (prefers-reduced-motion: no-preference) { .day, .lesson-card { transition: background .16s ease, border-color .16s ease; } }
+      body { margin: 0; min-height: 100vh; background: var(--paper); }
+      button, select { font: inherit; }
+      button { color: inherit; }
+      .app { width: min(100%, 760px); margin: 0 auto; padding: 0 20px calc(32px + env(safe-area-inset-bottom)); }
+      .masthead { position: relative; overflow: hidden; margin: 0 -20px 27px; padding: calc(19px + env(safe-area-inset-top)) 20px 27px; color: white; background: var(--navy); }
+      .masthead::before { position: absolute; top: -70px; right: -58px; width: 240px; height: 240px; border: 1px solid rgb(255 255 255 / 12%); border-radius: 50%; content: ""; }
+      .masthead::after { position: absolute; top: -18px; right: 4px; width: 160px; height: 160px; border: 1px solid rgb(255 255 255 / 9%); border-radius: 50%; content: ""; }
+      .masthead-inner { position: relative; z-index: 1; width: min(100%, 720px); margin: auto; }
+      .identity { display: flex; align-items: center; justify-content: space-between; }
+      .brand { display: inline-flex; align-items: center; gap: 11px; font-size: 12px; font-weight: 700; letter-spacing: .14em; }
+      .brand-mark { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid rgb(255 255 255 / 25%); border-radius: 11px 11px 11px 3px; color: white; font-size: 13px; font-weight: 850; letter-spacing: -.08em; }
+      .brand-caption { color: rgb(255 255 255 / 58%); font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+      .season { display: inline-flex; align-items: center; gap: 7px; color: rgb(255 255 255 / 76%); font-size: 10px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+      .season::before { width: 7px; height: 7px; border-radius: 50%; background: #d34a5d; content: ""; }
+      .hero { margin-top: 29px; }
+      .kicker { color: #d66576; font-size: 10px; font-weight: 750; letter-spacing: .16em; text-transform: uppercase; }
+      h1 { margin: 7px 0 0; font-size: clamp(34px, 9vw, 48px); line-height: .98; letter-spacing: -.055em; }
+      .hero-copy { margin: 12px 0 0; color: rgb(255 255 255 / 66%); font-size: 13px; }
+      .content { position: relative; }
+      .group-panel { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 13px; margin-top: -52px; padding: 17px; border: 1px solid rgb(16 29 50 / 8%); border-radius: 17px; background: var(--card); box-shadow: var(--shadow); }
+      .field-label { display: block; margin: 0 0 8px; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+      .group-select { width: 100%; min-width: 0; padding: 10px 35px 10px 12px; border: 1px solid var(--line); border-radius: 10px; outline: none; color: var(--text); background: #fff; font-size: 14px; font-weight: 730; }
+      .group-select:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgb(182 31 54 / 10%); }
+      .faculty-count { padding-bottom: 10px; color: var(--muted); font-size: 10px; white-space: nowrap; }
+      .group-meta { grid-column: 1 / -1; display: flex; align-items: center; gap: 7px; min-height: 15px; color: var(--muted); font-size: 11px; }
+      .group-meta::before { width: 5px; height: 5px; border-radius: 50%; background: var(--green); content: ""; }
+      .week-head { display: flex; align-items: center; justify-content: space-between; margin: 28px 0 12px; }
+      .week-copy { display: flex; flex-direction: column; gap: 3px; }
+      .week-caption { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+      .week-label { font-size: 15px; font-weight: 760; letter-spacing: -.02em; }
+      .week-actions { display: flex; gap: 7px; }
+      .icon-btn { display: grid; width: 35px; height: 35px; place-items: center; border: 1px solid var(--line); border-radius: 10px; background: var(--card); cursor: pointer; }
+      .icon-btn:disabled { opacity: .36; cursor: default; }
+      .days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; padding: 5px; border: 1px solid var(--line); border-radius: 16px; background: rgb(255 255 255 / 58%); }
+      .day { min-width: 0; padding: 8px 1px; border: 0; border-radius: 11px; background: transparent; cursor: pointer; }
+      .day-name { display: block; margin-bottom: 7px; color: var(--muted); font-size: 9px; font-weight: 700; text-transform: uppercase; }
+      .day-date { display: grid; width: 31px; height: 31px; place-items: center; margin: auto; border-radius: 9px; font-size: 12px; font-weight: 720; }
+      .day.active { color: white; background: var(--navy); box-shadow: 0 5px 12px rgb(16 29 50 / 17%); }
+      .day.active .day-name { color: rgb(255 255 255 / 68%); }
+      .day.today:not(.active) .day-date { color: var(--red); background: var(--red-soft); }
+      .day:disabled { opacity: .32; cursor: default; }
+      .schedule-heading { display: flex; align-items: end; justify-content: space-between; margin: 26px 1px 12px; }
+      .schedule-heading h2 { margin: 0; font-size: 18px; letter-spacing: -.035em; }
+      .selected-date { margin-top: 4px; color: var(--muted); font-size: 11px; }
+      .lesson-total { padding: 5px 9px; border-radius: 999px; color: var(--red); background: var(--red-soft); font-size: 10px; font-weight: 750; }
+      .timeline { display: grid; gap: 9px; }
+      .lesson { display: grid; grid-template-columns: 66px 1fr; gap: 10px; align-items: start; }
+      .time-col { padding-top: 15px; text-align: right; }
+      .time-start { display: block; font-size: 12px; font-weight: 780; font-variant-numeric: tabular-nums; }
+      .time-end { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+      .lesson-card { position: relative; overflow: hidden; padding: 14px 15px 13px 17px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+      .lesson-card::before { position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--red); content: ""; }
+      .lesson-top { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+      .lesson-kind { color: var(--red); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+      .week-chip { padding: 3px 6px; border-radius: 5px; color: #596273; background: #eff1f4; font-size: 9px; font-weight: 700; }
+      .lesson-title { margin: 7px 0 10px; font-size: 15px; line-height: 1.27; font-weight: 760; letter-spacing: -.02em; }
+      .lesson-meta { display: flex; flex-wrap: wrap; gap: 7px 14px; color: var(--muted); font-size: 10px; line-height: 1.35; }
+      .meta-item { display: inline-flex; align-items: flex-start; gap: 5px; }
+      .meta-icon { color: #9aa1aa; font-size: 11px; }
+      .details { margin-top: 10px; border-top: 1px solid #eef0f2; padding-top: 8px; color: #777f8d; font-size: 10px; }
+      .details summary { cursor: pointer; font-weight: 650; }
+      .details-list { display: grid; gap: 3px; margin: 7px 0 0; padding-left: 14px; line-height: 1.4; }
+      .empty, .loading, .error { padding: 26px 20px; border: 1px dashed #cfd3d8; border-radius: 15px; color: var(--muted); background: rgb(255 255 255 / 45%); text-align: center; font-size: 12px; line-height: 1.6; }
+      .error { border-color: #e4a8b1; color: #8e2635; background: #fff6f7; }
+      .footer { margin: 22px 4px 0; color: #858c95; font-size: 10px; line-height: 1.55; text-align: center; }
+      @media (min-width: 620px) {
+        .app { padding-right: 28px; padding-left: 28px; }
+        .masthead { margin-right: -28px; margin-left: -28px; padding-right: 28px; padding-left: 28px; }
+        .group-panel { grid-template-columns: 1fr auto; padding: 19px 20px; }
+        .timeline { gap: 11px; }
+        .lesson-card { padding: 16px 18px 15px 20px; }
+      }
+      @media (max-width: 360px) {
+        .app { padding-right: 14px; padding-left: 14px; }
+        .masthead { margin-right: -14px; margin-left: -14px; padding-right: 14px; padding-left: 14px; }
+        .days { gap: 2px; }
+        .day-date { width: 28px; height: 28px; }
+        .lesson { grid-template-columns: 56px 1fr; gap: 8px; }
+        .time-start { font-size: 11px; }
+      }
     </style>
   </head>
   <body>
     <main class="app">
-      <header class="topline">
-        <div class="brand"><span class="brand-mark" aria-hidden="true">П</span><span>Пары</span></div>
-        <span class="demo">ДЕМО</span>
+      <header class="masthead">
+        <div class="masthead-inner">
+          <div class="identity">
+            <div class="brand"><span class="brand-mark" aria-hidden="true">БНТУ</span><span><span>БЕЛОРУССКИЙ</span><br><span class="brand-caption">НАЦИОНАЛЬНЫЙ ТЕХНИЧЕСКИЙ</span></span></div>
+            <span class="season">1 курс · 2026/27</span>
+          </div>
+          <div class="hero"><div class="kicker">Учебный график</div><h1>Расписание<br>занятий</h1><p class="hero-copy">Дневная форма · осенний семестр</p></div>
+        </div>
       </header>
 
-      <section aria-labelledby="page-title">
-        <div class="eyebrow" id="today-label">Расписание на сегодня</div>
-        <h1 id="page-title">Привет!</h1>
-        <p class="subtitle" id="date-label"></p>
-      </section>
+      <div class="content">
+        <section class="group-panel" aria-label="Выбор группы">
+          <div><label class="field-label" for="group-select">Моя группа</label><select class="group-select" id="group-select" disabled><option>Загрузка групп…</option></select></div>
+          <span class="faculty-count" id="group-count"></span>
+          <div class="group-meta" id="faculty-name">Расписание первого курса БНТУ</div>
+        </section>
 
-      <button class="group-card" id="group-button" type="button" aria-label="Выбрать учебную группу">
-        <span><span class="group-label">Моя группа</span><span class="group-value" id="group-name">ИВТ-21</span></span>
-        <span class="group-arrow" aria-hidden="true">⌄</span>
-      </button>
-
-      <section aria-label="Выбор дня">
-        <div class="week-row">
-          <span class="week-title" id="week-label"></span>
-          <div class="week-controls">
-            <button class="icon-btn" id="prev-week" type="button" aria-label="Предыдущая неделя">‹</button>
-            <button class="icon-btn" id="next-week" type="button" aria-label="Следующая неделя">›</button>
+        <section aria-label="Календарь расписания">
+          <div class="week-head">
+            <div class="week-copy"><span class="week-caption">Учебная неделя</span><span class="week-label" id="week-label">—</span></div>
+            <div class="week-actions"><button class="icon-btn" id="prev-week" type="button" aria-label="Предыдущая неделя">‹</button><button class="icon-btn" id="next-week" type="button" aria-label="Следующая неделя">›</button></div>
           </div>
-        </div>
-        <div class="days" id="days"></div>
-      </section>
+          <div class="days" id="days"></div>
+        </section>
 
-      <section aria-live="polite">
-        <div class="section-head"><h2 id="selected-day-title"></h2><span class="class-count" id="class-count"></span></div>
-        <div class="timeline" id="schedule"></div>
-      </section>
-      <p class="note">Расписание показано для примера. Подключите данные своего вуза, чтобы увидеть актуальные пары.</p>
+        <section aria-live="polite">
+          <div class="schedule-heading"><div><h2 id="day-title">Расписание</h2><div class="selected-date" id="date-label"></div></div><span class="lesson-total" id="lesson-count"></span></div>
+          <div class="timeline" id="schedule"><div class="loading">Загружаю расписание…</div></div>
+        </section>
+        <p class="footer">Данные расписания БНТУ · 2026–2027 учебный год<br>Время, аудитории и чередование недель указаны по исходному расписанию.</p>
+      </div>
     </main>
 
     <script>
       const tg = window.Telegram?.WebApp;
       tg?.ready();
       tg?.expand();
-      if (tg?.themeParams) {
-        const root = document.documentElement;
-        const colors = { '--tg-theme-bg-color': tg.themeParams.bg_color, '--tg-theme-secondary-bg-color': tg.themeParams.secondary_bg_color, '--tg-theme-text-color': tg.themeParams.text_color, '--tg-theme-hint-color': tg.themeParams.hint_color, '--tg-theme-button-color': tg.themeParams.button_color, '--tg-theme-button-text-color': tg.themeParams.button_text_color };
-        Object.entries(colors).forEach(([key, value]) => value && root.style.setProperty(key, value));
+      if (tg?.themeParams?.bg_color) {
+        document.documentElement.style.setProperty('--paper', tg.themeParams.bg_color);
+        document.documentElement.style.setProperty('--text', tg.themeParams.text_color || '#172236');
       }
 
-      const demoSchedule = {
-        1: [
-          { start: '09:00', end: '10:30', type: 'Лекция', title: 'Алгоритмы и структуры данных', teacher: 'И. В. Смирнов', room: 'ауд. 304', color: '#5479a8' },
-          { start: '10:45', end: '12:15', type: 'Практика', title: 'Дискретная математика', teacher: 'А. П. Козлова', room: 'ауд. 218', color: '#bc8050' },
-          { start: '13:00', end: '14:30', type: 'Лабораторная', title: 'Основы веб-разработки', teacher: 'М. А. Иванов', room: 'лаб. 12', color: '#56816a' },
-        ],
-        2: [
-          { start: '10:45', end: '12:15', type: 'Лекция', title: 'Базы данных', teacher: 'Е. Н. Петрова', room: 'ауд. 411', color: '#5479a8' },
-          { start: '12:30', end: '14:00', type: 'Практика', title: 'Теория вероятностей', teacher: 'С. В. Орлов', room: 'ауд. 226', color: '#bc8050' },
-        ],
-        3: [
-          { start: '09:00', end: '10:30', type: 'Практика', title: 'Алгоритмы и структуры данных', teacher: 'И. В. Смирнов', room: 'ауд. 315', color: '#bc8050' },
-          { start: '10:45', end: '12:15', type: 'Лекция', title: 'Операционные системы', teacher: 'Д. Р. Волков', room: 'ауд. 502', color: '#5479a8' },
-          { start: '14:15', end: '15:45', type: 'Лабораторная', title: 'Базы данных', teacher: 'Е. Н. Петрова', room: 'лаб. 8', color: '#56816a' },
-        ],
-        4: [
-          { start: '09:00', end: '10:30', type: 'Лекция', title: 'Теория вероятностей', teacher: 'С. В. Орлов', room: 'ауд. 220', color: '#5479a8' },
-          { start: '10:45', end: '12:15', type: 'Практика', title: 'Операционные системы', teacher: 'Д. Р. Волков', room: 'ауд. 503', color: '#bc8050' },
-        ],
-        5: [
-          { start: '09:00', end: '10:30', type: 'Лабораторная', title: 'Основы веб-разработки', teacher: 'М. А. Иванов', room: 'лаб. 12', color: '#56816a' },
-          { start: '10:45', end: '12:15', type: 'Лекция', title: 'Дискретная математика', teacher: 'А. П. Козлова', room: 'ауд. 218', color: '#5479a8' },
-        ],
-        6: [], 0: [],
-      };
+      const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+      const dayLong = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
+      const ruDate = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' });
+      const ruWeek = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' });
+      const termStart = new Date(2026, 8, 1);
+      const termEnd = new Date(2026, 11, 28);
+      const today = new Date();
+      let selectedDate = new Date(today >= termStart && today <= termEnd ? today : termStart);
+      let groups = [];
+      let currentGroup = null;
 
-      const weekdayShort = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
-      const weekdayLong = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
-      const monthNames = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-      const mondayOffset = date => (date.getDay() + 6) % 7;
+      const $ = selector => document.querySelector(selector);
       const atMidnight = date => new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      let weekStart = atMidnight(new Date());
-      weekStart.setDate(weekStart.getDate() - mondayOffset(weekStart));
-      let selectedDate = atMidnight(new Date());
-      const dateLabel = document.querySelector('#date-label');
-      const daysNode = document.querySelector('#days');
+      const mondayOf = date => { const result = atMidnight(date); result.setDate(result.getDate() - (result.getDay() + 6) % 7); return result; };
+      const sameDay = (left, right) => atMidnight(left).getTime() === atMidnight(right).getTime();
+      const academicWeek = date => Math.floor((atMidnight(date) - termStart) / (7 * 24 * 60 * 60 * 1000)) + 1;
 
-      function render() {
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
-        document.querySelector('#week-label').textContent = weekStart.getMonth() === weekEnd.getMonth()
-          ? `${weekStart.getDate()}–${weekEnd.getDate()} ${monthNames[weekEnd.getMonth()]}`
-          : `${weekStart.getDate()} ${monthNames[weekStart.getMonth()]} – ${weekEnd.getDate()} ${monthNames[weekEnd.getMonth()]}`;
-        const today = atMidnight(new Date());
-        daysNode.replaceChildren();
-        for (let i = 0; i < 7; i++) {
-          const dayDate = new Date(weekStart);
-          dayDate.setDate(dayDate.getDate() + i);
+      function addText(tag, className, value) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        node.textContent = value;
+        return node;
+      }
+
+      function getWeekDates() {
+        const start = mondayOf(selectedDate);
+        return Array.from({ length: 7 }, (_, index) => {
+          const date = new Date(start);
+          date.setDate(start.getDate() + index);
+          return date;
+        });
+      }
+
+      function visibleLessons(dayIndex) {
+        if (!currentGroup) return [];
+        const weekNo = academicWeek(selectedDate);
+        return currentGroup.lessons
+          .filter(lesson => lesson.day === dayIndex && (!lesson.weeks?.length || lesson.weeks.includes(weekNo % 2 === 1 ? 1 : 2)))
+          .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+      }
+
+      function renderDays() {
+        const host = $('#days');
+        host.replaceChildren();
+        const dates = getWeekDates();
+        dates.forEach((date, index) => {
           const button = document.createElement('button');
           button.type = 'button';
-          button.className = `day${dayDate.getTime() === selectedDate.getTime() ? ' active' : ''}${dayDate.getTime() === today.getTime() ? ' today' : ''}`;
-          button.setAttribute('aria-pressed', String(dayDate.getTime() === selectedDate.getTime()));
-          button.innerHTML = `<span class="day-name">${weekdayShort[i]}</span><span class="day-num">${dayDate.getDate()}</span>`;
-          button.addEventListener('click', () => { selectedDate = dayDate; render(); });
-          daysNode.append(button);
-        }
-        dateLabel.textContent = `${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]} ${selectedDate.getFullYear()}`;
-        const idx = selectedDate.getDay();
-        const isToday = selectedDate.getTime() === today.getTime();
-        document.querySelector('#today-label').textContent = isToday ? 'Расписание на сегодня' : 'Расписание на выбранный день';
-        document.querySelector('#page-title').textContent = isToday ? 'Привет!' : weekdayLong[idx][0].toUpperCase() + weekdayLong[idx].slice(1);
-        document.querySelector('#selected-day-title').textContent = `${weekdayLong[idx][0].toUpperCase()}${weekdayLong[idx].slice(1)}, ${selectedDate.getDate()} ${monthNames[selectedDate.getMonth()]}`;
-        const lessons = demoSchedule[idx] || [];
-        document.querySelector('#class-count').textContent = lessons.length ? `${lessons.length} ${lessons.length === 1 ? 'пара' : lessons.length < 5 ? 'пары' : 'пар'}` : '';
-        const schedule = document.querySelector('#schedule');
-        schedule.replaceChildren();
-        if (!lessons.length) {
-          const empty = document.createElement('div');
-          empty.className = 'empty';
-          empty.textContent = 'На этот день пар нет. Можно выдохнуть или заняться своими делами.';
-          schedule.append(empty);
-          return;
-        }
-        for (const lesson of lessons) {
-          const row = document.createElement('article');
-          row.className = 'lesson';
-          row.innerHTML = `<div class="time">${lesson.start}<br>– ${lesson.end}</div><div class="lesson-card" style="--lesson-color:${lesson.color}"><div class="lesson-type">${lesson.type}</div><h3 class="lesson-title">${lesson.title}</h3><div class="lesson-meta"><span class="meta-item">⌖ ${lesson.room}</span><span class="meta-item">◷ ${lesson.teacher}</span></div></div>`;
-          schedule.append(row);
-        }
+          button.className = `day${sameDay(date, selectedDate) ? ' active' : ''}${sameDay(date, today) ? ' today' : ''}`;
+          button.disabled = date < termStart || date > termEnd;
+          button.setAttribute('aria-pressed', String(sameDay(date, selectedDate)));
+          button.append(addText('span', 'day-name', dayNames[index]), addText('span', 'day-date', String(date.getDate())));
+          button.addEventListener('click', () => { selectedDate = date; render(); });
+          host.append(button);
+        });
+        const first = dates[0];
+        const last = dates[6];
+        $('#week-label').textContent = `${ruWeek.format(first)} — ${ruWeek.format(last)}`;
+        const prev = new Date(selectedDate); prev.setDate(prev.getDate() - 7);
+        const next = new Date(selectedDate); next.setDate(next.getDate() + 7);
+        $('#prev-week').disabled = prev < termStart;
+        $('#next-week').disabled = next > termEnd;
       }
 
-      document.querySelector('#prev-week').addEventListener('click', () => { weekStart.setDate(weekStart.getDate() - 7); selectedDate.setDate(selectedDate.getDate() - 7); render(); });
-      document.querySelector('#next-week').addEventListener('click', () => { weekStart.setDate(weekStart.getDate() + 7); selectedDate.setDate(selectedDate.getDate() + 7); render(); });
-      document.querySelector('#group-button').addEventListener('click', () => tg?.showAlert?.('Выбор группы подключим после настройки расписания вашего вуза.'));
-      render();
+      function makeMeta(icon, value) {
+        const item = document.createElement('span');
+        item.className = 'meta-item';
+        item.append(addText('span', 'meta-icon', icon), addText('span', '', value));
+        return item;
+      }
+
+      function renderLesson(lesson) {
+        const row = document.createElement('article');
+        row.className = 'lesson';
+        const time = document.createElement('div');
+        time.className = 'time-col';
+        time.append(addText('span', 'time-start', lesson.start || '—'));
+        if (lesson.end) time.append(addText('span', 'time-end', lesson.end));
+        row.append(time);
+
+        const card = document.createElement('div');
+        card.className = 'lesson-card';
+        const top = document.createElement('div'); top.className = 'lesson-top';
+        if (lesson.type) top.append(addText('span', 'lesson-kind', lesson.type));
+        for (const week of lesson.weeks || []) top.append(addText('span', 'week-chip', `${week}-я неделя`));
+        if (top.childNodes.length) card.append(top);
+        card.append(addText('h3', 'lesson-title', lesson.title || 'Занятие'));
+        const meta = document.createElement('div'); meta.className = 'lesson-meta';
+        if (lesson.room) meta.append(makeMeta('⌖', lesson.room));
+        if (lesson.teacher) meta.append(makeMeta('◷', lesson.teacher));
+        if (lesson.dates?.length) meta.append(makeMeta('▦', lesson.dates.join(', ')));
+        if (meta.childNodes.length) card.append(meta);
+
+        const details = (lesson.details || []).filter(text => text && text !== lesson.title);
+        if (details.length) {
+          const disclosure = document.createElement('details'); disclosure.className = 'details';
+          disclosure.append(addText('summary', '', 'Примечания из исходного расписания'));
+          const list = document.createElement('ul'); list.className = 'details-list';
+          details.forEach(text => list.append(addText('li', '', text)));
+          disclosure.append(list); card.append(disclosure);
+        }
+        row.append(card);
+        return row;
+      }
+
+      function renderSchedule() {
+        const dayIndex = (selectedDate.getDay() + 6) % 7;
+        const lessons = visibleLessons(dayIndex);
+        $('#day-title').textContent = `${dayLong[dayIndex][0].toUpperCase()}${dayLong[dayIndex].slice(1)}`;
+        $('#date-label').textContent = ruDate.format(selectedDate);
+        $('#lesson-count').textContent = lessons.length ? `${lessons.length} ${lessons.length === 1 ? 'пара' : 'пар'}` : 'Выходной';
+        const host = $('#schedule'); host.replaceChildren();
+        if (!lessons.length) {
+          host.append(addText('div', 'empty', 'На этот день занятий нет.'));
+          return;
+        }
+        lessons.forEach(lesson => host.append(renderLesson(lesson)));
+      }
+
+      function render() {
+        renderDays();
+        renderSchedule();
+      }
+
+      function populateGroups() {
+        const select = $('#group-select');
+        select.replaceChildren();
+        const previous = localStorage.getItem('bntu-group');
+        const faculties = new Map();
+        for (const group of groups) {
+          if (!faculties.has(group.faculty)) faculties.set(group.faculty, []);
+          faculties.get(group.faculty).push(group);
+        }
+        [...faculties.entries()].sort(([a], [b]) => a.localeCompare(b, 'ru')).forEach(([faculty, facultyGroups]) => {
+          const optgroup = document.createElement('optgroup');
+          optgroup.label = facultyGroups[0].facultyName || faculty;
+          facultyGroups.sort((a, b) => a.id.localeCompare(b.id, 'ru')).forEach(group => {
+            const option = document.createElement('option');
+            option.value = group.id;
+            option.textContent = group.label;
+            optgroup.append(option);
+          });
+          select.append(optgroup);
+        });
+        select.disabled = false;
+        select.value = groups.some(group => group.id === previous) ? previous : groups[0]?.id;
+        currentGroup = groups.find(group => group.id === select.value);
+        updateGroupMeta();
+        $('#group-count').textContent = `${groups.length} групп`;
+        select.addEventListener('change', () => {
+          localStorage.setItem('bntu-group', select.value);
+          currentGroup = groups.find(group => group.id === select.value);
+          updateGroupMeta(); render();
+        });
+      }
+
+      function updateGroupMeta() {
+        $('#faculty-name').textContent = currentGroup?.facultyName || currentGroup?.faculty || 'БНТУ';
+      }
+
+      $('#prev-week').addEventListener('click', () => { if ($('#prev-week').disabled) return; selectedDate.setDate(selectedDate.getDate() - 7); render(); });
+      $('#next-week').addEventListener('click', () => { if ($('#next-week').disabled) return; selectedDate.setDate(selectedDate.getDate() + 7); render(); });
+
+      fetch('./schedule.json')
+        .then(response => { if (!response.ok) throw new Error('Не удалось загрузить schedule.json'); return response.json(); })
+        .then(data => {
+          groups = data.groups || [];
+          if (!groups.length) throw new Error('В файле schedule.json нет групп.');
+          populateGroups(); render();
+        })
+        .catch(error => {
+          $('#group-select').replaceChildren(new Option('Нет данных', ''));
+          $('#faculty-name').textContent = error.message;
+          const host = $('#schedule'); host.replaceChildren(addText('div', 'error', 'Не удалось загрузить расписание. Проверьте, что schedule.json лежит рядом с index.html и открыт через GitHub Pages или локальный веб-сервер.'));
+        });
     </script>
   </body>
 </html>
