@@ -320,10 +320,12 @@
           const sheet = workbook.Sheets[sheetName];
           const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1:A1');
           const mergesByRow = new Map();
+          const timeMergesByStartRow = new Map();
           for (const merge of sheet['!merges'] || []) {
             const row = merge.s.r + 1;
             if (!mergesByRow.has(row)) mergesByRow.set(row, []);
             mergesByRow.get(row).push(merge);
+            if (merge.s.c <= 1 && merge.e.c >= 1) timeMergesByStartRow.set(row, merge);
           }
           const headers = [];
           for (let row = 1; row <= Math.min(15, range.e.r + 1); row++) {
@@ -353,14 +355,19 @@
             timePattern.lastIndex = 0;
             if (times.length && currentDay !== null) {
               const norm = match => `${String(Number(match[1])).padStart(2, '0')}:${match[2]}`;
-              slots.push({ row, day: currentDay, timeText, start: norm(times[0]), end: norm(times[times.length - 1]) });
+              const periods = [];
+              for (let index = 0; index + 1 < times.length; index += 2) periods.push({ start: norm(times[index]), end: norm(times[index + 1]) });
+              const timeMerge = timeMergesByStartRow.get(row);
+              const rowSpan = timeMerge ? timeMerge.e.r - timeMerge.s.r + 1 : periods.length > 1 ? periods.length * 2 : 1;
+              const rowsPerPeriod = periods.length > 1 && rowSpan % periods.length === 0 ? rowSpan / periods.length : null;
+              slots.push({ row, day: currentDay, timeText, periods, rowSpan, rowsPerPeriod, start: periods[0].start, end: periods[periods.length - 1].end });
             }
           }
           for (const header of uniqueHeaders) {
             if (!result.has(header.id)) result.set(header.id, { id: header.id, label: header.label, faculty: header.faculty, facultyName: header.facultyName, lessons: [] });
             const target = result.get(header.id);
             for (const slot of slots) {
-              const endRow = Math.min(range.e.r + 1, slot.row + 3);
+              const endRow = Math.min(range.e.r + 1, slot.row + Math.max(3, slot.rowSpan - 1));
               const entries = [];
               const seenCells = new Set();
               for (let row = slot.row; row <= endRow; row++) {
@@ -386,40 +393,63 @@
                 }
               }
               entries.sort((a, b) => a.row - b.row || a.column - b.column);
-              const parts = entries.map(entry => entry.raw);
-              if (!parts.length) continue;
-              const weekSpecific = { 1: [], 2: [] };
-              const common = [];
-              let activeWeek = null;
-              for (const raw of parts) {
-                const marked = [...new Set([...raw.matchAll(/(?<!\d)([12])\s*(?:нед\.?|недел\w*)/gi)].map(match => Number(match[1])))];
-                if (marked.length) {
-                  marked.forEach(week => weekSpecific[week].push(raw));
-                  activeWeek = marked.length === 1 ? marked[0] : null;
-                } else if (activeWeek) weekSpecific[activeWeek].push(raw);
-                else common.push(raw);
+              if (!entries.length) continue;
+              let periodEntries = [entries];
+              if (slot.periods.length === 2 && slot.rowsPerPeriod) {
+                const groupedByPeriod = slot.periods.map((_, periodIndex) => entries.filter(entry =>
+                  Math.min(slot.periods.length - 1, Math.floor((entry.row - slot.row) / slot.rowsPerPeriod)) === periodIndex
+                ));
+                const hasLessonInEachPeriod = groupedByPeriod.every(group => group.some(entry => /лекцион|практическ|лабораторн|семинар|оиз/i.test(entry.raw)));
+                if (hasLessonInEachPeriod) periodEntries = groupedByPeriod;
               }
-              const variants = (weekSpecific[1].length || weekSpecific[2].length)
-                ? [1, 2].filter(week => weekSpecific[week].length).map(week => [week, [...new Set([...common, ...weekSpecific[week]])]])
-                : [[null, [...new Set(common)]]];
-              for (const [week, variantParts] of variants) {
-                const fields = lessonFields(variantParts, week);
-                const groupTime = variantParts.map(part => new RegExp(timePattern.source, 'g').exec(part)).find(Boolean);
-                const hasExplicitTime = variantParts.some(part => /^\s*\d{1,2}[.:]\d{2}/.test(part));
-                const lesson = {
-                  day: slot.day,
-                  start: groupTime && hasExplicitTime ? `${String(Number(groupTime[1])).padStart(2, '0')}:${groupTime[2]}` : slot.start,
-                  end: groupTime && hasExplicitTime ? null : slot.end,
-                  timeLabel: slot.timeText,
-                  sourceRow: slot.row,
-                  sourceCells: entries.filter(entry => variantParts.includes(entry.raw)).map(entry => entry.coordinate),
-                  ...fields
-                };
-                const identity = JSON.stringify([lesson.day, lesson.start, lesson.end, lesson.sourceCells, lesson.details]);
-                if (!target._seen) target._seen = new Set();
-                if (!target._seen.has(identity)) {
-                  target._seen.add(identity);
-                  target.lessons.push(lesson);
+              const periodMarkers = periodEntries.map(group => new Set(group.flatMap(entry =>
+                [...entry.raw.matchAll(/(?<!\d)([12])\s*(?:нед\.?|недел\w*)/gi)].map(match => Number(match[1]))
+              )));
+              const inferAlternatingWeeks = periodEntries.length === 2 && periodEntries.every(group => group.length) && periodMarkers.some(markers => markers.size === 1);
+              for (let periodIndex = 0; periodIndex < periodEntries.length; periodIndex++) {
+                const segmentEntries = periodEntries[periodIndex];
+                const parts = segmentEntries.map(entry => entry.raw);
+                const weekSpecific = { 1: [], 2: [] };
+                const common = [];
+                let activeWeek = null;
+                for (const raw of parts) {
+                  const marked = [...new Set([...raw.matchAll(/(?<!\d)([12])\s*(?:нед\.?|недел\w*)/gi)].map(match => Number(match[1])))];
+                  if (marked.length) {
+                    marked.forEach(week => weekSpecific[week].push(raw));
+                    activeWeek = marked.length === 1 ? marked[0] : null;
+                  } else if (activeWeek) weekSpecific[activeWeek].push(raw);
+                  else common.push(raw);
+                }
+                const segmentMarker = periodMarkers[periodIndex];
+                let inferredWeek = segmentMarker.size === 1 ? [...segmentMarker][0] : null;
+                if (!inferredWeek && inferAlternatingWeeks) {
+                  const otherMarker = periodMarkers[1 - periodIndex];
+                  inferredWeek = otherMarker.size === 1 ? 3 - [...otherMarker][0] : periodIndex + 1;
+                }
+                const variants = (weekSpecific[1].length || weekSpecific[2].length)
+                  ? [1, 2].filter(week => weekSpecific[week].length).map(week => [week, [...new Set([...common, ...weekSpecific[week]])]])
+                  : [[inferredWeek, [...new Set(common)]]];
+                for (const [week, variantParts] of variants) {
+                  const fields = lessonFields(variantParts, week);
+                  const groupTime = variantParts.map(part => new RegExp(timePattern.source, 'g').exec(part)).find(Boolean);
+                  const hasExplicitTime = variantParts.some(part => /^\s*\d{1,2}[.:]\d{2}/.test(part));
+                  const segmentedPeriod = periodEntries.length > 1 ? slot.periods[periodIndex] : null;
+                  const weekPeriod = week && slot.periods.length > 1 ? slot.periods[week - 1] : null;
+                  const lesson = {
+                    day: slot.day,
+                    start: groupTime && hasExplicitTime ? `${String(Number(groupTime[1])).padStart(2, '0')}:${groupTime[2]}` : segmentedPeriod?.start || weekPeriod?.start || slot.start,
+                    end: groupTime && hasExplicitTime ? null : segmentedPeriod?.end || weekPeriod?.end || slot.end,
+                    timeLabel: slot.timeText,
+                    sourceRow: segmentEntries[0]?.row ?? slot.row,
+                    sourceCells: segmentEntries.filter(entry => variantParts.includes(entry.raw)).map(entry => entry.coordinate),
+                    ...fields
+                  };
+                  const identity = JSON.stringify([lesson.day, lesson.start, lesson.end, lesson.sourceCells, lesson.details]);
+                  if (!target._seen) target._seen = new Set();
+                  if (!target._seen.has(identity)) {
+                    target._seen.add(identity);
+                    target.lessons.push(lesson);
+                  }
                 }
               }
             }
