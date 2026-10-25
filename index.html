@@ -192,6 +192,7 @@
             <div class="group-field"><label class="field-label" for="faculty-picker">Факультет</label><select class="group-select" id="faculty-picker" disabled><option value="">Загружаю список…</option></select></div>
             <div class="group-field"><label class="field-label" for="group-picker">Учебная группа</label><select class="group-select" id="group-picker" disabled><option value="">Сначала выберите факультет</option></select></div>
           </div>
+          <span class="faculty-count" id="group-count"></span>
           <div class="group-meta" id="faculty-name">Выберите курс и факультет</div>
           <div class="storage-note" id="storage-note" aria-live="polite">Личные изменения сохраняются на устройстве.</div>
         </section>
@@ -1075,7 +1076,8 @@
         if (!config) return;
         selectedCourse = courseId;
         $('#course-picker').value = courseId;
-        $('#course-season').textContent = config.label;
+        const courseLabel = $('#course-season') || $('.season');
+        if (courseLabel) courseLabel.textContent = config.label;
         savedGroupId = courseGroupPreferences.get(courseId) || '';
         currentGroup = null;
         groups = [];
