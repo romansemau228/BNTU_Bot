@@ -59,6 +59,7 @@
       .group-meta::before { width: 5px; height: 5px; border-radius: 50%; background: var(--green); content: ""; }
       .group-meta.invalid { color: var(--red); }
       .group-meta.invalid::before { background: var(--red); }
+      .storage-note { color: var(--muted); font-size: 10px; line-height: 1.4; }
       .week-head { display: flex; align-items: center; justify-content: space-between; margin: 28px 0 12px; }
       .week-copy { display: flex; flex-direction: column; gap: 3px; }
       .week-caption { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
@@ -95,12 +96,40 @@
       .details { margin-top: 10px; border-top: 1px solid var(--line); padding-top: 8px; color: var(--muted); font-size: 11px; }
       .details summary { cursor: pointer; font-weight: 650; }
       .details-list { display: grid; gap: 3px; margin: 7px 0 0; padding-left: 14px; line-height: 1.4; }
+      .lesson.cancelled .lesson-card { background: #f4f5f4; opacity: .78; }
+      .lesson.cancelled .lesson-title { text-decoration: line-through; text-decoration-thickness: 1px; }
+      .cancelled-chip { padding: 3px 6px; border-radius: 5px; color: #8a343e; background: #fae9eb; font-size: 9px; font-weight: 750; }
+      .lesson-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
+      .lesson-action { min-height: 34px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 9px; color: #46544a; background: #fff; font-size: 11px; font-weight: 680; cursor: pointer; transition: border-color .18s ease, background-color .18s ease, transform .18s ease; }
+      .lesson-action.cancel { color: #8a343e; }
+      .lesson-action:active { transform: scale(.98); }
+      .editor-dialog { width: min(100% - 28px, 440px); max-height: min(90vh, 720px); padding: 0; border: 1px solid var(--line); border-radius: 18px; color: var(--text); background: #fff; box-shadow: 0 24px 80px rgb(20 35 25 / 22%); }
+      .editor-dialog::backdrop { background: rgb(20 29 23 / 48%); backdrop-filter: blur(2px); }
+      .editor-form { display: grid; gap: 12px; padding: 20px; }
+      .editor-form h2 { margin: 0; font-size: 19px; }
+      .editor-intro { margin: -5px 0 2px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+      .editor-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+      .editor-field { min-width: 0; }
+      .editor-field.wide { grid-column: 1 / -1; }
+      .editor-field label { display: block; margin: 0 0 5px; color: var(--muted); font-size: 11px; font-weight: 700; }
+      .editor-field input, .editor-field select { width: 100%; min-height: 42px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 9px; outline: none; color: var(--text); background: #fff; font-size: 13px; }
+      .editor-field input:focus, .editor-field select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgb(75 138 88 / 14%); }
+      .editor-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin-top: 2px; }
+      .editor-actions .right { display: flex; gap: 7px; margin-left: auto; }
+      .editor-button { min-height: 38px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 9px; background: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
+      .editor-button.primary { border-color: var(--brand-dark); color: #fff; background: var(--brand-dark); }
+      .editor-button.reset { color: #8a343e; }
       .empty, .loading, .error { padding: 26px 20px; border: 1px dashed #d7ded8; border-radius: 15px; color: var(--muted); background: var(--surface); text-align: center; font-size: 13px; line-height: 1.6; }
       .error { border-color: #e4a8b1; color: #8e2635; background: #fff6f7; }
-      .footer { margin: 22px 4px 0; color: var(--muted); font-size: 11px; line-height: 1.55; text-align: center; }
+      .footer { display: grid; gap: 12px; margin: 22px 4px 0; color: var(--muted); font-size: 11px; line-height: 1.55; text-align: center; }
+      .footer-source { margin: 0; }
+      .contact-link { display: inline-flex; align-items: center; justify-self: center; gap: 8px; min-height: 40px; padding: 8px 13px; border: 1px solid var(--line); border-radius: 999px; color: var(--brand-dark); background: var(--surface); font-size: 12px; font-weight: 700; text-decoration: none; transition: border-color .18s ease, background-color .18s ease, transform .18s ease; }
+      .contact-link svg { width: 17px; height: 17px; flex: 0 0 auto; fill: currentColor; }
+      .contact-link:active { transform: scale(.98); }
       @media (hover: hover) {
         .icon-btn:not(:disabled):hover { border-color: #b8d2bc; background: #f6f9f6; transform: translateY(-1px); }
         .day:not(:disabled):hover { background: #edf4ee; }
+        .lesson-action:hover, .contact-link:hover { border-color: #b8d2bc; background: #f6f9f6; }
       }
       .icon-btn:not(:disabled):active, .day:not(:disabled):active { transform: scale(.97); }
       @media (prefers-reduced-motion: no-preference) {
@@ -153,6 +182,7 @@
           </div>
           <span class="faculty-count" id="group-count"></span>
           <div class="group-meta" id="faculty-name">Расписание первого курса БНТУ</div>
+          <div class="storage-note" id="storage-note" aria-live="polite">Личные изменения сохраняются на устройстве.</div>
         </section>
 
         <section aria-label="Календарь расписания">
@@ -167,9 +197,34 @@
           <div class="schedule-heading"><div><h2 id="day-title">Расписание</h2><div class="selected-date" id="date-label"></div></div><span class="lesson-total" id="lesson-count"></span></div>
           <div class="timeline" id="schedule"><div class="loading">Загружаю расписание…</div></div>
         </section>
-        <p class="footer">Данные расписания БНТУ · 2026–2027 учебный год<br>Время, аудитории и чередование недель указаны по исходному расписанию.</p>
+        <footer class="footer">
+          <p class="footer-source">Данные расписания БНТУ · 2026–2027 учебный год<br>Время, аудитории и чередование недель указаны по исходному расписанию.</p>
+          <a class="contact-link" href="https://t.me/AngelJevil" target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.7 4.3 18.5 20c-.2 1.1-.8 1.4-1.7.9l-4.7-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.4-4.8 8.7-7.9c.4-.4-.1-.6-.6-.2L6.6 14.1 2 12.7c-1-.3-1-1 .2-1.5L20.1 4.3c.8-.3 1.5.2 1.6 0Z"/></svg>
+            <span>Нашли ошибку в расписании? Напишите мне</span>
+          </a>
+        </footer>
       </div>
     </main>
+
+    <dialog class="editor-dialog" id="lesson-editor" aria-labelledby="editor-title">
+      <form class="editor-form" id="editor-form">
+        <h2 id="editor-title">Изменить пару</h2>
+        <p class="editor-intro">Изменения будут видны только вам и сохранятся в вашем Telegram.</p>
+        <div class="editor-fields">
+          <div class="editor-field wide"><label for="edit-title">Название</label><input id="edit-title" name="title" maxlength="180" required /></div>
+          <div class="editor-field"><label for="edit-type">Тип занятия</label><select id="edit-type" name="type"><option>Лекция</option><option>Практика</option><option>Лабораторная</option><option>Семинар</option><option>Другое</option></select></div>
+          <div class="editor-field"><label for="edit-room">Аудитория</label><input id="edit-room" name="room" maxlength="80" /></div>
+          <div class="editor-field"><label for="edit-start">Начало</label><input id="edit-start" name="start" type="time" required /></div>
+          <div class="editor-field"><label for="edit-end">Окончание</label><input id="edit-end" name="end" type="time" /></div>
+          <div class="editor-field wide"><label for="edit-teacher">Преподаватель</label><input id="edit-teacher" name="teacher" maxlength="120" /></div>
+        </div>
+        <div class="editor-actions">
+          <button class="editor-button reset" id="reset-edit" type="button">Сбросить мои правки</button>
+          <div class="right"><button class="editor-button" id="close-editor" type="button">Закрыть</button><button class="editor-button primary" type="submit">Сохранить</button></div>
+        </div>
+      </form>
+    </dialog>
 
     <script>
       const tg = window.Telegram?.WebApp;
@@ -188,6 +243,14 @@
       let selectedDate = new Date(today >= termStart && today <= termEnd ? today : termStart);
       let groups = [];
       let currentGroup = null;
+      let savedGroupId = '';
+      let storageMode = 'browser';
+      let cloudStorageReady = false;
+      let cloudWriteQueue = Promise.resolve();
+      const personalOverrides = new Map();
+      const localOnlyKeys = new Set();
+      const telegramCloudStorage = tg?.CloudStorage && (!tg.isVersionAtLeast || tg.isVersionAtLeast('6.9')) ? tg.CloudStorage : null;
+      const localStoragePrefix = 'bntu-local-';
 
       const weekdays = new Map(['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'].map((day, index) => [day, index]));
       const groupCodePattern = /(?<!\d)(1\d{5}26)(?!\d)/;
@@ -219,6 +282,174 @@
 
       function clean(value) {
         return value == null ? '' : String(value).replace(/\s+/g, ' ').trim();
+      }
+
+      function cloudCall(method, ...args) {
+        return new Promise((resolve, reject) => {
+          telegramCloudStorage[method](...args, (error, result) => error ? reject(error) : resolve(result));
+        });
+      }
+
+      function queueCloudWrite(operation) {
+        const pending = cloudWriteQueue.then(operation);
+        cloudWriteQueue = pending.catch(() => {});
+        return pending;
+      }
+
+      function safeLocalGet(key) {
+        try { return localStorage.getItem(key); } catch { return null; }
+      }
+
+      function safeLocalSet(key, value) {
+        try { localStorage.setItem(key, value); return true; } catch { return false; }
+      }
+
+      function safeLocalRemove(key) {
+        try { localStorage.removeItem(key); } catch { /* storage may be unavailable in a restricted browser */ }
+      }
+
+      function updateStorageNote() {
+        const note = $('#storage-note');
+        if (note) note.textContent = storageMode === 'telegram'
+          ? localOnlyKeys.size
+            ? 'Некоторые правки пока сохранены только в этом браузере.'
+            : 'Личные правки сохраняются в вашем Telegram и видны только вам.'
+          : telegramCloudStorage
+            ? 'Telegram-хранилище недоступно: правки сохраняются в этом браузере.'
+            : 'Вне Telegram правки сохраняются только в этом браузере.';
+        const intro = document.querySelector('.editor-intro');
+        if (intro) intro.textContent = storageMode === 'telegram'
+          ? `${localOnlyKeys.size ? 'Изменение действует только на выбранную дату и сохраняется локально.' : 'Эта правка действует только на выбранную дату и сохраняется в вашем Telegram.'}`
+          : 'Эта правка действует только на выбранную дату и сохраняется в этом браузере.';
+      }
+
+      function parseStoredOverride(value) {
+        try { return JSON.parse(value); } catch { return null; }
+      }
+
+      async function loadPersonalData() {
+        let cloudValues = {};
+        if (telegramCloudStorage) {
+          try {
+            const keys = await cloudCall('getKeys');
+            const relevant = (keys || []).filter(key => key === 'bntu_group' || key.startsWith('bntu_edit_'));
+            cloudValues = relevant.length ? await cloudCall('getItems', relevant) : {};
+            cloudStorageReady = true;
+          } catch {
+            cloudStorageReady = false;
+          }
+        }
+        const localGroupOverride = safeLocalGet(`${localStoragePrefix}bntu_group`);
+        if (localGroupOverride !== null) localOnlyKeys.add('bntu_group');
+        const legacyGroup = safeLocalGet('bntu-group');
+        savedGroupId = localGroupOverride !== null ? localGroupOverride : (cloudValues.bntu_group || legacyGroup || '');
+
+        const localOverrides = [];
+        for (const [key, value] of Object.entries(cloudValues)) {
+          if (!key.startsWith('bntu_edit_')) continue;
+          const parsed = parseStoredOverride(value);
+          if (parsed) personalOverrides.set(key, parsed);
+        }
+        try {
+          for (let index = 0; index < localStorage.length; index++) {
+            const localKey = localStorage.key(index);
+            if (!localKey?.startsWith(`${localStoragePrefix}bntu_edit_`)) continue;
+            const key = localKey.slice(localStoragePrefix.length);
+            const parsed = parseStoredOverride(localStorage.getItem(localKey));
+            if (parsed) {
+              personalOverrides.set(key, parsed);
+              localOnlyKeys.add(key);
+              localOverrides.push({ localKey, key, value: parsed });
+            }
+          }
+        } catch { /* local storage may be unavailable */ }
+        if (cloudStorageReady) {
+          try {
+            for (const { localKey, key, value } of localOverrides) {
+              if (value._deleted) {
+                await queueCloudWrite(() => cloudCall('removeItem', key));
+                personalOverrides.delete(key);
+              } else await queueCloudWrite(() => cloudCall('setItem', key, JSON.stringify(value)));
+              safeLocalRemove(localKey);
+              localOnlyKeys.delete(key);
+            }
+            if (localGroupOverride !== null) {
+              if (localGroupOverride) await queueCloudWrite(() => cloudCall('setItem', 'bntu_group', localGroupOverride));
+              else await queueCloudWrite(() => cloudCall('removeItem', 'bntu_group'));
+              safeLocalRemove(`${localStoragePrefix}bntu_group`);
+              localOnlyKeys.delete('bntu_group');
+            }
+          } catch { cloudStorageReady = false; }
+        }
+        storageMode = cloudStorageReady ? 'telegram' : 'browser';
+        updateStorageNote();
+      }
+
+      async function saveGroupPreference(groupId) {
+        const value = groupId || '';
+        if (value) safeLocalSet('bntu-group', value); else safeLocalRemove('bntu-group');
+        safeLocalSet(`${localStoragePrefix}bntu_group`, value);
+        localOnlyKeys.add('bntu_group');
+        if (telegramCloudStorage) {
+          try {
+            if (value) await queueCloudWrite(() => cloudCall('setItem', 'bntu_group', value));
+            else await queueCloudWrite(() => cloudCall('removeItem', 'bntu_group'));
+            safeLocalRemove(`${localStoragePrefix}bntu_group`);
+            localOnlyKeys.delete('bntu_group');
+            cloudStorageReady = true;
+            storageMode = 'telegram';
+          } catch {
+            cloudStorageReady = false;
+            storageMode = 'browser';
+          }
+        } else storageMode = 'browser';
+        if (!telegramCloudStorage) localOnlyKeys.add('bntu_group');
+        updateStorageNote();
+      }
+
+      async function savePersonalOverride(key, override) {
+        if (override) personalOverrides.set(key, override);
+        else personalOverrides.delete(key);
+        render();
+        if (telegramCloudStorage) {
+          try {
+            if (override) await queueCloudWrite(() => cloudCall('setItem', key, JSON.stringify(override)));
+            else await queueCloudWrite(() => cloudCall('removeItem', key));
+            safeLocalRemove(`${localStoragePrefix}${key}`);
+            localOnlyKeys.delete(key);
+            cloudStorageReady = true;
+            storageMode = 'telegram';
+          } catch {
+            // Keep a local copy (or tombstone) so a failed cloud write does not resurrect an old edit.
+            safeLocalSet(`${localStoragePrefix}${key}`, JSON.stringify(override || { _deleted: true }));
+            localOnlyKeys.add(key);
+            cloudStorageReady = false;
+            storageMode = 'browser';
+          }
+        } else {
+          if (override) safeLocalSet(`${localStoragePrefix}${key}`, JSON.stringify(override));
+          else safeLocalRemove(`${localStoragePrefix}${key}`);
+          if (override) localOnlyKeys.add(key); else localOnlyKeys.delete(key);
+          storageMode = 'browser';
+        }
+        updateStorageNote();
+        render();
+      }
+
+      function lessonStorageKey(lesson) {
+        const occurrenceDate = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+        const identity = JSON.stringify([currentGroup?.id, occurrenceDate, lesson.day, lesson.start, lesson.end, lesson.sourceCells, lesson.title, lesson.type]);
+        let hash = 14695981039346656037n;
+        for (let index = 0; index < identity.length; index++) {
+          hash ^= BigInt(identity.charCodeAt(index));
+          hash = (hash * 1099511628211n) & 0xffffffffffffffffn;
+        }
+        return `bntu_edit_${hash.toString(16).padStart(16, '0')}`;
+      }
+
+      function overrideForLesson(lesson) {
+        const override = personalOverrides.get(lessonStorageKey(lesson));
+        return override?._deleted ? null : override || null;
       }
 
       function collapseSpacedLetters(value) {
@@ -518,24 +749,27 @@
       }
 
       function renderLesson(lesson) {
+        const override = overrideForLesson(lesson);
+        const shown = { ...lesson, ...(override || {}) };
         const row = document.createElement('article');
-        row.className = 'lesson';
+        row.className = `lesson${shown.cancelled ? ' cancelled' : ''}`;
         const time = document.createElement('div');
         time.className = 'time-col';
-        time.append(addText('span', 'time-start', lesson.start || '—'));
-        if (lesson.end) time.append(addText('span', 'time-end', lesson.end));
+        time.append(addText('span', 'time-start', shown.start || '—'));
+        if (shown.end) time.append(addText('span', 'time-end', shown.end));
         row.append(time);
 
         const card = document.createElement('div');
         card.className = 'lesson-card';
         const top = document.createElement('div'); top.className = 'lesson-top';
-        if (lesson.type) top.append(addText('span', 'lesson-kind', lesson.type));
+        if (shown.type) top.append(addText('span', 'lesson-kind', shown.type));
         for (const week of lesson.weeks || []) top.append(addText('span', 'week-chip', `${week}-я неделя`));
+        if (shown.cancelled) top.append(addText('span', 'cancelled-chip', 'Отменена вами'));
         if (top.childNodes.length) card.append(top);
-        card.append(addText('h3', 'lesson-title', lesson.title || 'Занятие'));
+        card.append(addText('h3', 'lesson-title', shown.title || 'Занятие'));
         const meta = document.createElement('div'); meta.className = 'lesson-meta';
-        if (lesson.room) meta.append(makeMeta('⌖', lesson.room));
-        if (lesson.teacher) meta.append(makeMeta('◷', lesson.teacher));
+        if (shown.room) meta.append(makeMeta('⌖', shown.room));
+        if (shown.teacher) meta.append(makeMeta('◷', shown.teacher));
         if (lesson.dates?.length) meta.append(makeMeta('▦', lesson.dates.join(', ')));
         if (meta.childNodes.length) card.append(meta);
 
@@ -547,9 +781,73 @@
           details.forEach(text => list.append(addText('li', '', text)));
           disclosure.append(list); card.append(disclosure);
         }
+        const actions = document.createElement('div');
+        actions.className = 'lesson-actions';
+        const editButton = addText('button', 'lesson-action', 'Изменить на эту дату');
+        editButton.type = 'button';
+        editButton.addEventListener('click', () => openLessonEditor(lesson));
+        const cancelButton = addText('button', 'lesson-action cancel', shown.cancelled ? 'Вернуть на эту дату' : 'Отменить на эту дату');
+        cancelButton.type = 'button';
+        cancelButton.addEventListener('click', () => {
+          const key = lessonStorageKey(lesson);
+          const current = personalOverrides.get(key);
+          const next = { ...(current && !current._deleted ? current : {}), cancelled: !(current && current.cancelled) };
+          if (!next.cancelled && Object.keys(next).length === 1) savePersonalOverride(key, null);
+          else savePersonalOverride(key, next);
+        });
+        actions.append(editButton, cancelButton);
+        card.append(actions);
         row.append(card);
         return row;
       }
+
+      let editorLesson = null;
+      let editorKey = '';
+
+      function openLessonEditor(lesson) {
+        editorLesson = lesson;
+        editorKey = lessonStorageKey(lesson);
+        const override = overrideForLesson(lesson) || {};
+        const shown = { ...lesson, ...override };
+        $('#edit-title').value = shown.title || '';
+        $('#edit-room').value = shown.room || '';
+        $('#edit-start').value = shown.start || '';
+        $('#edit-end').value = shown.end || '';
+        $('#edit-teacher').value = shown.teacher || '';
+        const typePicker = $('#edit-type');
+        const other = typePicker.options[typePicker.options.length - 1];
+        if (other) { other.value = 'Другое'; other.textContent = 'Другое'; }
+        const existingType = [...typePicker.options].some(option => option.value === (shown.type || ''));
+        if (shown.type && !existingType) {
+          if (other) { other.value = shown.type; other.textContent = shown.type; }
+        }
+        typePicker.value = shown.type || 'Другое';
+        updateStorageNote();
+        $('#lesson-editor').showModal();
+      }
+
+      $('#close-editor').addEventListener('click', () => $('#lesson-editor').close());
+      $('#editor-form').addEventListener('submit', event => {
+        event.preventDefault();
+        if (!editorLesson) return;
+        const current = personalOverrides.get(editorKey);
+        const next = {
+          title: clean($('#edit-title').value) || editorLesson.title,
+          type: clean($('#edit-type').value),
+          start: $('#edit-start').value || editorLesson.start,
+          end: $('#edit-end').value,
+          room: clean($('#edit-room').value),
+          teacher: clean($('#edit-teacher').value)
+        };
+        if (current && !current._deleted && current.cancelled) next.cancelled = true;
+        $('#lesson-editor').close();
+        savePersonalOverride(editorKey, next);
+      });
+      $('#reset-edit').addEventListener('click', () => {
+        if (!editorKey) return;
+        $('#lesson-editor').close();
+        savePersonalOverride(editorKey, null);
+      });
 
       function renderSchedule() {
         const dayIndex = (selectedDate.getDay() + 6) % 7;
@@ -577,7 +875,7 @@
       function populateFaculties() {
         const facultyPicker = $('#faculty-picker');
         const picker = $('#group-picker');
-        const previous = localStorage.getItem('bntu-group');
+        const previous = savedGroupId;
         const faculties = new Map();
         for (const group of groups) {
           if (!faculties.has(group.faculty)) faculties.set(group.faculty, { name: group.facultyName || group.faculty || 'БНТУ', groups: [] });
@@ -621,7 +919,8 @@
         const facultyPicker = $('#faculty-picker');
         const faculty = facultyPicker.value;
         currentGroup = null;
-        localStorage.removeItem('bntu-group');
+        savedGroupId = '';
+        saveGroupPreference('');
         populateGroupPicker(faculty);
         $('#group-count').textContent = faculty
           ? `${groups.filter(group => group.faculty === faculty).length} групп на факультете`
@@ -633,7 +932,8 @@
       function handleGroupPick() {
         const picker = $('#group-picker');
         currentGroup = groups.find(group => group.id === picker.value) || null;
-        if (currentGroup) localStorage.setItem('bntu-group', currentGroup.id);
+        savedGroupId = currentGroup?.id || '';
+        saveGroupPreference(savedGroupId);
         updateGroupMeta();
         render();
       }
@@ -653,11 +953,12 @@
 
       fetch('./data/schedule-source.xlsx')
         .then(response => { if (!response.ok) throw new Error('Не удалось загрузить Excel-файл расписания.'); return response.arrayBuffer(); })
-        .then(buffer => {
+        .then(async buffer => {
           if (!window.XLSX) throw new Error('Не загрузился модуль чтения Excel. Проверьте подключение к интернету и обновите страницу.');
           const workbook = XLSX.read(buffer, { cellDates: false });
           parseScheduleWorkbook(workbook);
           if (!groups.length) throw new Error('В Excel-файле не найдены группы расписания.');
+          await loadPersonalData();
           populateFaculties(); render();
         })
         .catch(error => {
