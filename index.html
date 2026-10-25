@@ -213,7 +213,9 @@
       const atMidnight = date => new Date(date.getFullYear(), date.getMonth(), date.getDate());
       const mondayOf = date => { const result = atMidnight(date); result.setDate(result.getDate() - (result.getDay() + 6) % 7); return result; };
       const sameDay = (left, right) => atMidnight(left).getTime() === atMidnight(right).getTime();
-      const academicWeek = date => Math.floor((atMidnight(date) - termStart) / (7 * 24 * 60 * 60 * 1000)) + 1;
+      const calendarDay = date => Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / (24 * 60 * 60 * 1000);
+      const academicWeek = date => Math.floor((calendarDay(mondayOf(date)) - calendarDay(mondayOf(termStart))) / 7) + 1;
+      const alternatingWeek = date => (academicWeek(date) - 1) % 2 + 1;
 
       function clean(value) {
         return value == null ? '' : String(value).replace(/\s+/g, ' ').trim();
@@ -449,9 +451,9 @@
 
       function visibleLessons(dayIndex) {
         if (!currentGroup) return [];
-        const weekNo = academicWeek(selectedDate);
+        const weekNo = alternatingWeek(selectedDate);
         return currentGroup.lessons
-          .filter(lesson => lesson.day === dayIndex && (!lesson.weeks?.length || lesson.weeks.includes(weekNo % 2 === 1 ? 1 : 2)))
+          .filter(lesson => lesson.day === dayIndex && (!lesson.weeks?.length || lesson.weeks.includes(weekNo)))
           .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
       }
 
@@ -471,7 +473,7 @@
         });
         const first = dates[0];
         const last = dates[6];
-        $('#week-label').textContent = `${ruWeek.format(first)} — ${ruWeek.format(last)}`;
+        $('#week-label').textContent = `${alternatingWeek(selectedDate)}-я неделя · ${ruWeek.format(first)} — ${ruWeek.format(last)}`;
         const prev = new Date(selectedDate); prev.setDate(prev.getDate() - 7);
         const next = new Date(selectedDate); next.setDate(next.getDate() + 7);
         $('#prev-week').disabled = prev < termStart;
