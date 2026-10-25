@@ -3,57 +3,57 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#101d32" />
+    <meta name="theme-color" content="#e8f4e9" />
     <title>Расписание БНТУ</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <style>
       :root {
         color-scheme: light;
-        --navy: #101d32;
-        --navy-soft: #1d2c43;
+        --brand-dark: #285b39;
+        --brand: #4b8a58;
+        --brand-soft: #e4f1e6;
         --red: #b61f36;
-        --red-soft: #f9e9ec;
-        --paper: #ffffff;
-        --surface: #f7f8fa;
+        --paper: #f4f9f5;
+        --surface: #edf5ef;
         --card: #fff;
-        --text: #172236;
-        --muted: #586577;
-        --line: #d9dfe7;
-        --green: #256b59;
-        --shadow: 0 16px 42px rgb(16 29 50 / 8%);
+        --text: #1d3023;
+        --muted: #526657;
+        --line: #d8e5da;
+        --green: #3d7c4c;
+        --shadow: 0 16px 42px rgb(40 91 57 / 9%);
         font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         color: var(--text);
         background: var(--paper);
       }
 
       * { box-sizing: border-box; }
-      body { margin: 0; min-height: 100vh; background: #fff; }
+      body { margin: 0; min-height: 100vh; background: var(--paper); }
       button, input, select { font: inherit; }
       button { color: inherit; }
       .app { width: min(100%, 760px); margin: 0 auto; padding: 0 20px calc(32px + env(safe-area-inset-bottom)); }
-      .masthead { position: relative; overflow: hidden; margin: 0 -20px 27px; padding: calc(19px + env(safe-area-inset-top)) 20px 27px; color: white; background: var(--navy); }
-      .masthead::before { position: absolute; top: -70px; right: -58px; width: 240px; height: 240px; border: 1px solid rgb(255 255 255 / 12%); border-radius: 50%; content: ""; }
-      .masthead::after { position: absolute; top: -18px; right: 4px; width: 160px; height: 160px; border: 1px solid rgb(255 255 255 / 9%); border-radius: 50%; content: ""; }
+      .masthead { position: relative; overflow: hidden; margin: 0 -20px 27px; padding: calc(19px + env(safe-area-inset-top)) 20px 27px; color: var(--brand-dark); background: linear-gradient(140deg, #eaf5ec 0%, #dcefe0 100%); }
+      .masthead::before { position: absolute; top: -70px; right: -58px; width: 240px; height: 240px; border: 1px solid rgb(40 91 57 / 13%); border-radius: 50%; content: ""; }
+      .masthead::after { position: absolute; top: -18px; right: 4px; width: 160px; height: 160px; border: 1px solid rgb(40 91 57 / 10%); border-radius: 50%; content: ""; }
       .masthead-inner { position: relative; z-index: 1; width: min(100%, 720px); margin: auto; }
       .identity { display: flex; align-items: center; justify-content: space-between; }
       .brand { display: inline-flex; align-items: center; gap: 11px; font-size: 12px; font-weight: 700; letter-spacing: .14em; }
-      .brand-mark { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid rgb(255 255 255 / 25%); border-radius: 11px 11px 11px 3px; color: white; font-size: 13px; font-weight: 850; letter-spacing: -.08em; }
-      .brand-caption { color: rgb(255 255 255 / 58%); font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
-      .season { display: inline-flex; align-items: center; gap: 7px; color: rgb(255 255 255 / 76%); font-size: 10px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
-      .season::before { width: 7px; height: 7px; border-radius: 50%; background: #d34a5d; content: ""; }
+      .brand-mark { display: grid; width: 40px; height: 40px; place-items: center; border: 1px solid rgb(40 91 57 / 25%); border-radius: 11px 11px 11px 3px; color: var(--brand-dark); font-size: 13px; font-weight: 850; letter-spacing: -.08em; }
+      .brand-caption { color: rgb(40 91 57 / 72%); font-size: 10px; font-weight: 650; letter-spacing: .12em; text-transform: uppercase; }
+      .season { display: inline-flex; align-items: center; gap: 7px; color: #426b4a; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+      .season::before { width: 7px; height: 7px; border-radius: 50%; background: var(--brand); content: ""; }
       .hero { margin-top: 29px; }
-      .kicker { color: #d66576; font-size: 10px; font-weight: 750; letter-spacing: .16em; text-transform: uppercase; }
+      .kicker { color: var(--brand); font-size: 10px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
       h1 { margin: 7px 0 0; font-size: clamp(34px, 9vw, 48px); line-height: .98; letter-spacing: -.055em; }
-      .hero-copy { margin: 12px 0 0; color: rgb(255 255 255 / 66%); font-size: 13px; }
+      .hero-copy { margin: 12px 0 0; color: #4d6b54; font-size: 13px; }
       .content { position: relative; }
-      .group-panel { display: grid; grid-template-columns: 1fr; align-items: stretch; gap: 11px; margin-top: -52px; padding: 17px; border: 1px solid rgb(16 29 50 / 8%); border-radius: 17px; background: #fff; box-shadow: var(--shadow); }
+      .group-panel { display: grid; grid-template-columns: 1fr; align-items: stretch; gap: 11px; margin-top: -52px; padding: 17px; border: 1px solid rgb(40 91 57 / 10%); border-radius: 17px; background: #fff; box-shadow: var(--shadow); }
       .group-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
       .group-field { min-width: 0; }
       .field-label { display: block; margin: 0 0 7px; color: var(--muted); font-size: 11px; font-weight: 750; letter-spacing: .06em; }
       .group-select { width: 100%; min-width: 0; min-height: 46px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 11px; outline: none; color: var(--text); background-color: #fff; font-size: 15px; font-weight: 680; }
-      .group-select::placeholder { color: #687487; opacity: 1; font-weight: 500; }
-      .group-select:focus-visible { border-color: var(--red); box-shadow: 0 0 0 3px rgb(182 31 54 / 12%); }
+      .group-select::placeholder { color: #718176; opacity: 1; font-weight: 500; }
+      .group-select:focus-visible { border-color: var(--brand); box-shadow: 0 0 0 3px rgb(75 138 88 / 16%); }
       .faculty-count { justify-self: start; margin-top: -3px; color: var(--muted); font-size: 11px; white-space: nowrap; }
       .group-meta { display: flex; align-items: center; gap: 8px; min-height: 18px; color: var(--muted); font-size: 12px; line-height: 1.4; }
       .group-meta::before { width: 5px; height: 5px; border-radius: 50%; background: var(--green); content: ""; }
@@ -70,37 +70,37 @@
       .day { min-width: 0; padding: 8px 1px; border: 0; border-radius: 11px; background: transparent; cursor: pointer; transition: background-color .18s ease, color .18s ease, transform .18s ease; }
       .day-name { display: block; margin-bottom: 7px; color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; }
       .day-date { display: grid; width: 31px; height: 31px; place-items: center; margin: auto; border-radius: 9px; font-size: 12px; font-weight: 720; }
-      .day.active { color: white; background: var(--navy); box-shadow: 0 5px 12px rgb(16 29 50 / 17%); }
+      .day.active { color: white; background: var(--brand-dark); box-shadow: 0 5px 12px rgb(40 91 57 / 19%); }
       .day.active .day-name { color: rgb(255 255 255 / 68%); }
-      .day.today:not(.active) .day-date { color: var(--red); background: var(--red-soft); }
+      .day.today:not(.active) .day-date { color: var(--brand-dark); background: var(--brand-soft); }
       .day:disabled { opacity: .58; cursor: default; }
       .schedule-heading { display: flex; align-items: end; justify-content: space-between; margin: 26px 1px 12px; }
       .schedule-heading h2 { margin: 0; font-size: 18px; letter-spacing: -.035em; }
       .selected-date { margin-top: 4px; color: var(--muted); font-size: 12px; }
-      .lesson-total { padding: 5px 9px; border-radius: 999px; color: var(--red); background: var(--red-soft); font-size: 10px; font-weight: 750; }
+      .lesson-total { padding: 5px 9px; border-radius: 999px; color: var(--brand-dark); background: var(--brand-soft); font-size: 10px; font-weight: 750; }
       .timeline { display: grid; gap: 9px; }
       .lesson { display: grid; grid-template-columns: 66px 1fr; gap: 10px; align-items: start; }
       .time-col { padding-top: 15px; text-align: right; }
       .time-start { display: block; font-size: 12px; font-weight: 780; font-variant-numeric: tabular-nums; }
       .time-end { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
       .lesson-card { position: relative; overflow: hidden; padding: 14px 15px 13px 17px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
-      .lesson-card::before { position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--red); content: ""; }
+      .lesson-card::before { position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--brand); content: ""; }
       .lesson-top { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-      .lesson-kind { color: var(--red); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-      .week-chip { padding: 3px 6px; border-radius: 5px; color: #596273; background: #eff1f4; font-size: 9px; font-weight: 700; }
+      .lesson-kind { color: var(--brand-dark); font-size: 9px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+      .week-chip { padding: 3px 6px; border-radius: 5px; color: #48644f; background: #eaf3ec; font-size: 9px; font-weight: 700; }
       .lesson-title { margin: 7px 0 10px; font-size: 15px; line-height: 1.27; font-weight: 760; letter-spacing: -.02em; }
       .lesson-meta { display: flex; flex-wrap: wrap; gap: 7px 14px; color: var(--muted); font-size: 11px; line-height: 1.4; }
       .meta-item { display: inline-flex; align-items: flex-start; gap: 5px; }
-      .meta-icon { color: #657286; font-size: 12px; }
-      .details { margin-top: 10px; border-top: 1px solid #e9edf2; padding-top: 8px; color: #596679; font-size: 11px; }
+      .meta-icon { color: #607565; font-size: 12px; }
+      .details { margin-top: 10px; border-top: 1px solid #e3ede5; padding-top: 8px; color: #526657; font-size: 11px; }
       .details summary { cursor: pointer; font-weight: 650; }
       .details-list { display: grid; gap: 3px; margin: 7px 0 0; padding-left: 14px; line-height: 1.4; }
-      .empty, .loading, .error { padding: 26px 20px; border: 1px dashed #c6ced9; border-radius: 15px; color: var(--muted); background: var(--surface); text-align: center; font-size: 13px; line-height: 1.6; }
+      .empty, .loading, .error { padding: 26px 20px; border: 1px dashed #cbd9cd; border-radius: 15px; color: var(--muted); background: var(--surface); text-align: center; font-size: 13px; line-height: 1.6; }
       .error { border-color: #e4a8b1; color: #8e2635; background: #fff6f7; }
-      .footer { margin: 22px 4px 0; color: #596679; font-size: 11px; line-height: 1.55; text-align: center; }
+      .footer { margin: 22px 4px 0; color: #607164; font-size: 11px; line-height: 1.55; text-align: center; }
       @media (hover: hover) {
-        .icon-btn:not(:disabled):hover { border-color: #c6ced9; background: var(--surface); transform: translateY(-1px); }
-        .day:not(:disabled):hover { background: #e9edf2; }
+        .icon-btn:not(:disabled):hover { border-color: #c4d9c8; background: var(--surface); transform: translateY(-1px); }
+        .day:not(:disabled):hover { background: #e3efe5; }
       }
       .icon-btn:not(:disabled):active, .day:not(:disabled):active { transform: scale(.97); }
       @media (prefers-reduced-motion: no-preference) {
@@ -148,8 +148,8 @@
       <div class="content">
         <section class="group-panel" aria-label="Выбор группы">
           <div class="group-fields">
-            <div class="group-field"><label class="field-label" for="group-input">Ввести номер группы</label><input class="group-select" id="group-input" type="text" inputmode="numeric" autocomplete="off" placeholder="Например, 10111126" disabled /></div>
-            <div class="group-field"><label class="field-label" for="group-picker">Выбрать из списка</label><select class="group-select" id="group-picker" disabled><option value="">Загружаю список…</option></select></div>
+            <div class="group-field"><label class="field-label" for="faculty-picker">Факультет</label><select class="group-select" id="faculty-picker" disabled><option value="">Загружаю список…</option></select></div>
+            <div class="group-field"><label class="field-label" for="group-picker">Учебная группа</label><select class="group-select" id="group-picker" disabled><option value="">Сначала выберите факультет</option></select></div>
           </div>
           <span class="faculty-count" id="group-count"></span>
           <div class="group-meta" id="faculty-name">Расписание первого курса БНТУ</div>
@@ -175,8 +175,8 @@
       const tg = window.Telegram?.WebApp;
       tg?.ready();
       tg?.expand();
-      tg?.setHeaderColor?.('#101d32');
-      tg?.setBackgroundColor?.('#ffffff');
+      tg?.setHeaderColor?.('#eaf5ec');
+      tg?.setBackgroundColor?.('#f4f9f5');
 
       const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
       const dayLong = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
@@ -190,7 +190,7 @@
       let currentGroup = null;
 
       const weekdays = new Map(['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'].map((day, index) => [day, index]));
-      const groupCodePattern = /(?<!\d)(1\d{6}26)(?!\d)/;
+      const groupCodePattern = /(?<!\d)(1\d{5}26)(?!\d)/;
       const timePattern = /(?<!\d)(\d{1,2})[.:](\d{2})(?!\d)/g;
       const facultyNames = {
         'АТФ': 'Автотракторный факультет',
@@ -317,6 +317,12 @@
         for (const sheetName of workbook.SheetNames) {
           const sheet = workbook.Sheets[sheetName];
           const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1:A1');
+          const mergesByRow = new Map();
+          for (const merge of sheet['!merges'] || []) {
+            const row = merge.s.r + 1;
+            if (!mergesByRow.has(row)) mergesByRow.set(row, []);
+            mergesByRow.get(row).push(merge);
+          }
           const headers = [];
           for (let row = 1; row <= Math.min(15, range.e.r + 1); row++) {
             for (let column = 1; column <= range.e.c + 1; column++) {
@@ -353,14 +359,32 @@
             const target = result.get(header.id);
             for (const slot of slots) {
               const endRow = Math.min(range.e.r + 1, slot.row + 3);
-              const parts = [];
+              const entries = [];
+              const seenCells = new Set();
               for (let row = slot.row; row <= endRow; row++) {
                 for (let column = header.column; column <= Math.min(range.e.c + 1, header.column + 3); column++) {
                   const raw = clean(cellValue(sheet, row, column));
                   if (!raw || row < 15 || /^с 0?1\.09/i.test(raw) || weekdays.has(raw.toLowerCase()) || raw.toLowerCase().includes('учебных занятий студентов')) continue;
-                  parts.push(raw);
+                  const coordinate = XLSX.utils.encode_cell({ r: row - 1, c: column - 1 });
+                  entries.push({ row, column, raw, coordinate });
+                  seenCells.add(coordinate);
+                }
+                for (const merge of mergesByRow.get(row) || []) {
+                  const firstColumn = merge.s.c + 1;
+                  const lastColumn = merge.e.c + 1;
+                  const groupFirstColumn = header.column;
+                  const groupLastColumn = Math.min(range.e.c + 1, header.column + 3);
+                  if (lastColumn < groupFirstColumn || firstColumn > groupLastColumn) continue;
+                  const coordinate = XLSX.utils.encode_cell(merge.s);
+                  if (seenCells.has(coordinate)) continue;
+                  const raw = clean(cellValue(sheet, row, firstColumn));
+                  if (!raw || row < 15 || /^с 0?1\.09/i.test(raw) || weekdays.has(raw.toLowerCase()) || raw.toLowerCase().includes('учебных занятий студентов')) continue;
+                  entries.push({ row, column: firstColumn, raw, coordinate });
+                  seenCells.add(coordinate);
                 }
               }
+              entries.sort((a, b) => a.row - b.row || a.column - b.column);
+              const parts = entries.map(entry => entry.raw);
               if (!parts.length) continue;
               const weekSpecific = { 1: [], 2: [] };
               const common = [];
@@ -386,14 +410,9 @@
                   end: groupTime && hasExplicitTime ? null : slot.end,
                   timeLabel: slot.timeText,
                   sourceRow: slot.row,
-                  sourceCells: [],
+                  sourceCells: entries.filter(entry => variantParts.includes(entry.raw)).map(entry => entry.coordinate),
                   ...fields
                 };
-                for (let row = slot.row; row <= endRow; row++) {
-                  for (let column = header.column; column <= Math.min(range.e.c + 1, header.column + 3); column++) {
-                    if (variantParts.includes(clean(cellValue(sheet, row, column)))) lesson.sourceCells.push(XLSX.utils.encode_cell({ r: row - 1, c: column - 1 }));
-                  }
-                }
                 const identity = JSON.stringify([lesson.day, lesson.start, lesson.end, lesson.sourceCells, lesson.details]);
                 if (!target._seen) target._seen = new Set();
                 if (!target._seen.has(identity)) {
@@ -505,15 +524,13 @@
         const lessons = visibleLessons(dayIndex);
         $('#day-title').textContent = `${dayLong[dayIndex][0].toUpperCase()}${dayLong[dayIndex].slice(1)}`;
         $('#date-label').textContent = ruDate.format(selectedDate);
-        const enteredCode = $('#group-input').value.trim();
-        $('#lesson-count').textContent = !currentGroup ? enteredCode ? 'Проверьте код' : 'Выберите группу' : lessons.length ? `${lessons.length} ${lessons.length === 1 ? 'пара' : 'пар'}` : 'Выходной';
+        const selectedFaculty = $('#faculty-picker').value;
+        $('#lesson-count').textContent = !currentGroup ? selectedFaculty ? 'Выберите группу' : 'Выберите факультет' : lessons.length ? `${lessons.length} ${lessons.length === 1 ? 'пара' : 'пар'}` : 'Выходной';
         const host = $('#schedule'); host.replaceChildren();
         if (!lessons.length) {
           const message = currentGroup
             ? 'На этот день занятий нет.'
-            : enteredCode
-              ? 'Такого кода нет в загруженном расписании. Проверьте номер группы и попробуйте ещё раз.'
-              : 'Введите номер группы или выберите его из списка.';
+            : 'Сначала выберите факультет, затем учебную группу.';
           host.append(addText('div', 'empty', message));
           return;
         }
@@ -525,59 +542,65 @@
         renderSchedule();
       }
 
-      function populateGroups() {
-        const input = $('#group-input');
+      function populateFaculties() {
+        const facultyPicker = $('#faculty-picker');
         const picker = $('#group-picker');
-        picker.replaceChildren(addText('option', '', 'Выберите группу…'));
-        picker.options[0].value = '';
         const previous = localStorage.getItem('bntu-group');
         const faculties = new Map();
         for (const group of groups) {
-          if (!faculties.has(group.faculty)) faculties.set(group.faculty, []);
-          faculties.get(group.faculty).push(group);
+          if (!faculties.has(group.faculty)) faculties.set(group.faculty, { name: group.facultyName || group.faculty || 'БНТУ', groups: [] });
+          faculties.get(group.faculty).groups.push(group);
         }
-        [...faculties.entries()].sort(([a], [b]) => a.localeCompare(b, 'ru')).forEach(([faculty, facultyGroups]) => {
-          const optgroup = document.createElement('optgroup');
-          optgroup.label = facultyGroups[0]?.facultyName || faculty || 'БНТУ';
-          facultyGroups.sort((a, b) => a.id.localeCompare(b.id, 'ru')).forEach(group => {
-            const option = document.createElement('option');
-            option.value = group.id;
-            option.textContent = group.label && group.label !== group.id ? `${group.id} · ${group.label}` : group.id;
-            optgroup.append(option);
-          });
-          picker.append(optgroup);
+        facultyPicker.replaceChildren(addText('option', '', 'Выберите факультет…'));
+        facultyPicker.options[0].value = '';
+        [...faculties.entries()].sort(([, a], [, b]) => a.name.localeCompare(b.name, 'ru')).forEach(([code, faculty]) => {
+          const option = addText('option', '', faculty.name);
+          option.value = code;
+          facultyPicker.append(option);
         });
-        input.disabled = false;
-        picker.disabled = false;
-        input.value = groups.some(group => group.id === previous) ? previous : groups[0]?.id || '';
-        picker.value = input.value;
-        currentGroup = groups.find(group => group.id === input.value);
+        facultyPicker.disabled = false;
+        const savedGroup = groups.find(group => group.id === previous);
+        facultyPicker.value = savedGroup?.faculty || '';
+        currentGroup = savedGroup || null;
+        populateGroupPicker(facultyPicker.value, savedGroup?.id || '');
         updateGroupMeta();
-        $('#group-count').textContent = `${groups.length} групп`;
-        input.addEventListener('input', handleGroupInput);
-        input.addEventListener('change', handleGroupInput);
+        $('#group-count').textContent = facultyPicker.value
+          ? `${groups.filter(group => group.faculty === facultyPicker.value).length} групп на факультете`
+          : `${groups.length} групп · ${faculties.size} факультетов`;
+        facultyPicker.addEventListener('change', handleFacultyPick);
         picker.addEventListener('change', handleGroupPick);
       }
 
-      function handleGroupInput() {
-        const input = $('#group-input');
+      function populateGroupPicker(faculty, selectedGroup = '') {
         const picker = $('#group-picker');
-        const code = input.value.trim().replace(/\s+/g, '');
-        currentGroup = groups.find(group => group.id === code || group.label === code) || null;
-        if (currentGroup) {
-          input.value = currentGroup.id;
-          picker.value = currentGroup.id;
-          localStorage.setItem('bntu-group', currentGroup.id);
-        } else picker.value = '';
+        picker.replaceChildren(addText('option', '', faculty ? 'Выберите группу…' : 'Сначала выберите факультет'));
+        picker.options[0].value = '';
+        const facultyGroups = groups.filter(group => group.faculty === faculty).sort((a, b) => a.id.localeCompare(b.id, 'ru'));
+        for (const group of facultyGroups) {
+          const option = addText('option', '', group.label && group.label !== group.id ? `${group.id} · ${group.label}` : group.id);
+          option.value = group.id;
+          picker.append(option);
+        }
+        picker.disabled = !faculty;
+        picker.value = facultyGroups.some(group => group.id === selectedGroup) ? selectedGroup : '';
+      }
+
+      function handleFacultyPick() {
+        const facultyPicker = $('#faculty-picker');
+        const faculty = facultyPicker.value;
+        currentGroup = null;
+        localStorage.removeItem('bntu-group');
+        populateGroupPicker(faculty);
+        $('#group-count').textContent = faculty
+          ? `${groups.filter(group => group.faculty === faculty).length} групп на факультете`
+          : `${groups.length} групп · ${new Set(groups.map(group => group.faculty)).size} факультетов`;
         updateGroupMeta();
         render();
       }
 
       function handleGroupPick() {
         const picker = $('#group-picker');
-        const input = $('#group-input');
         currentGroup = groups.find(group => group.id === picker.value) || null;
-        input.value = currentGroup?.id || '';
         if (currentGroup) localStorage.setItem('bntu-group', currentGroup.id);
         updateGroupMeta();
         render();
@@ -585,11 +608,12 @@
 
       function updateGroupMeta() {
         const meta = $('#faculty-name');
-        const hasInput = Boolean($('#group-input').value.trim());
-        meta.classList.toggle('invalid', !currentGroup && hasInput);
+        const facultyPicker = $('#faculty-picker');
+        const facultyName = facultyPicker.selectedOptions[0]?.textContent;
+        meta.classList.remove('invalid');
         meta.textContent = currentGroup
           ? currentGroup.facultyName || currentGroup.faculty || 'БНТУ'
-          : hasInput ? 'Код группы не найден' : 'Введите код группы из исходного расписания';
+          : facultyPicker.value ? `Выберите группу факультета «${facultyName}»` : 'Сначала выберите факультет';
       }
 
       $('#prev-week').addEventListener('click', () => { if ($('#prev-week').disabled) return; selectedDate.setDate(selectedDate.getDate() - 7); render(); });
@@ -602,10 +626,10 @@
           const workbook = XLSX.read(buffer, { cellDates: false });
           parseScheduleWorkbook(workbook);
           if (!groups.length) throw new Error('В Excel-файле не найдены группы расписания.');
-          populateGroups(); render();
+          populateFaculties(); render();
         })
         .catch(error => {
-          $('#group-input').disabled = true;
+          $('#faculty-picker').disabled = true;
           $('#group-picker').disabled = true;
           $('#faculty-name').textContent = error.message;
           const host = $('#schedule'); host.replaceChildren(addText('div', 'error', 'Не удалось прочитать исходную книгу Excel. Проверьте, что файл лежит в папке data рядом с проектом, и откройте приложение через GitHub Pages или локальный веб-сервер.'));
