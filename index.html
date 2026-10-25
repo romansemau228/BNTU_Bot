@@ -849,6 +849,11 @@
         return node;
       }
 
+      function setGroupCount(value) {
+        const counter = $('#group-count');
+        if (counter) counter.textContent = value;
+      }
+
       function getWeekDates() {
         const start = mondayOf(selectedDate);
         return Array.from({ length: 7 }, (_, index) => {
@@ -1074,24 +1079,30 @@
       async function loadCourseSchedule(courseId) {
         const config = courseConfigs[courseId];
         if (!config) return;
-        selectedCourse = courseId;
-        $('#course-picker').value = courseId;
-        const courseLabel = $('#course-season') || $('.season');
-        if (courseLabel) courseLabel.textContent = config.label;
-        savedGroupId = courseGroupPreferences.get(courseId) || '';
-        currentGroup = null;
-        groups = [];
         const revision = ++courseLoadRevision;
         const facultyPicker = $('#faculty-picker');
         const groupPicker = $('#group-picker');
-        facultyPicker.disabled = true;
-        groupPicker.disabled = true;
-        facultyPicker.replaceChildren(addText('option', '', 'Загружаю список…'));
-        groupPicker.replaceChildren(addText('option', '', 'Сначала выберите факультет'));
-        $('#group-count').textContent = '';
-        updateGroupMeta();
-        $('#schedule').replaceChildren(addText('div', 'loading', `Загружаю расписание ${courseId}-го курса…`));
         try {
+          selectedCourse = courseId;
+          const coursePicker = $('#course-picker');
+          if (coursePicker) coursePicker.value = courseId;
+          const courseLabel = $('#course-season') || $('.season');
+          if (courseLabel) courseLabel.textContent = config.label;
+          savedGroupId = courseGroupPreferences.get(courseId) || '';
+          currentGroup = null;
+          groups = [];
+          if (facultyPicker) {
+            facultyPicker.disabled = true;
+            facultyPicker.replaceChildren(addText('option', '', 'Загружаю список…'));
+          }
+          if (groupPicker) {
+            groupPicker.disabled = true;
+            groupPicker.replaceChildren(addText('option', '', 'Сначала выберите факультет'));
+          }
+          setGroupCount('');
+          updateGroupMeta();
+          const schedule = $('#schedule');
+          if (schedule) schedule.replaceChildren(addText('div', 'loading', `Загружаю расписание ${courseId}-го курса…`));
           const response = await fetch(config.file);
           if (!response.ok) throw new Error(`Не удалось загрузить Excel-файл ${courseId}-го курса.`);
           const buffer = await response.arrayBuffer();
@@ -1106,13 +1117,15 @@
           render();
         } catch (error) {
           if (revision !== courseLoadRevision) return;
-          facultyPicker.disabled = true;
-          groupPicker.disabled = true;
+          if (facultyPicker) facultyPicker.disabled = true;
+          if (groupPicker) groupPicker.disabled = true;
           const openedAsLocalFile = window.location.protocol === 'file:';
-          $('#faculty-name').textContent = openedAsLocalFile
+          const status = $('#faculty-name');
+          if (status) status.textContent = openedAsLocalFile
             ? 'Браузер блокирует чтение Excel при открытии через file://'
             : error.message;
-          $('#schedule').replaceChildren(addText('div', 'error', openedAsLocalFile
+          const schedule = $('#schedule');
+          if (schedule) schedule.replaceChildren(addText('div', 'error', openedAsLocalFile
             ? 'Откройте приложение через GitHub Pages или локальный HTTP-сервер. Excel-книги должны лежать в папке data рядом с index.html.'
             : 'Не удалось прочитать Excel-файл курса. Проверьте, что исходный файл находится в папке data, и откройте приложение через GitHub Pages или локальный веб-сервер.'));
         }
@@ -1140,9 +1153,9 @@
         currentGroup = savedGroup || null;
         populateGroupPicker(facultyPicker.value, savedGroup?.id || '');
         updateGroupMeta();
-        $('#group-count').textContent = facultyPicker.value
+        setGroupCount(facultyPicker.value
           ? `${groups.filter(group => group.faculty === facultyPicker.value).length} групп на факультете`
-          : `${groups.length} групп · ${faculties.size} факультетов`;
+          : `${groups.length} групп · ${faculties.size} факультетов`);
         facultyPicker.addEventListener('change', handleFacultyPick);
         picker.addEventListener('change', handleGroupPick);
       }
@@ -1168,9 +1181,9 @@
         savedGroupId = '';
         saveGroupPreference('');
         populateGroupPicker(faculty);
-        $('#group-count').textContent = faculty
+        setGroupCount(faculty
           ? `${groups.filter(group => group.faculty === faculty).length} групп на факультете`
-          : `${groups.length} групп · ${new Set(groups.map(group => group.faculty)).size} факультетов`;
+          : `${groups.length} групп · ${new Set(groups.map(group => group.faculty)).size} факультетов`);
         updateGroupMeta();
         render();
       }
@@ -1197,11 +1210,12 @@
       function updateGroupMeta() {
         const meta = $('#faculty-name');
         const facultyPicker = $('#faculty-picker');
-        const facultyName = facultyPicker.selectedOptions[0]?.textContent;
+        if (!meta) return;
+        const facultyName = facultyPicker?.selectedOptions[0]?.textContent;
         meta.classList.remove('invalid');
         meta.textContent = currentGroup
           ? currentGroup.facultyName || currentGroup.faculty || 'БНТУ'
-          : facultyPicker.value ? `Выберите группу факультета «${facultyName}»` : 'Сначала выберите факультет';
+          : facultyPicker?.value ? `Выберите группу факультета «${facultyName}»` : 'Сначала выберите факультет';
       }
 
       function migrateLegacyOverridesForCurrentGroup() {
