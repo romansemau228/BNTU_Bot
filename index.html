@@ -1107,8 +1107,13 @@
           if (revision !== courseLoadRevision) return;
           facultyPicker.disabled = true;
           groupPicker.disabled = true;
-          $('#faculty-name').textContent = error.message;
-          $('#schedule').replaceChildren(addText('div', 'error', 'Не удалось прочитать Excel-файл курса. Проверьте, что исходный файл находится в папке data, и откройте приложение через GitHub Pages или локальный веб-сервер.'));
+          const openedAsLocalFile = window.location.protocol === 'file:';
+          $('#faculty-name').textContent = openedAsLocalFile
+            ? 'Браузер блокирует чтение Excel при открытии через file://'
+            : error.message;
+          $('#schedule').replaceChildren(addText('div', 'error', openedAsLocalFile
+            ? 'Откройте приложение через GitHub Pages или локальный HTTP-сервер. Excel-книги должны лежать в папке data рядом с index.html.'
+            : 'Не удалось прочитать Excel-файл курса. Проверьте, что исходный файл находится в папке data, и откройте приложение через GitHub Pages или локальный веб-сервер.'));
         }
       }
 
