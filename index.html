@@ -214,7 +214,7 @@
     <dialog class="editor-dialog" id="lesson-editor" aria-labelledby="editor-title">
       <form class="editor-form" id="editor-form">
         <h2 id="editor-title">Изменить пару</h2>
-        <p class="editor-intro">Изменение действует только на выбранную дату и сохраняется для вас.</p>
+        <p class="editor-intro">Правка пары будет применена ко всем её появлениям в расписании.</p>
         <div class="editor-fields">
           <div class="editor-field wide"><label for="edit-title">Название</label><input id="edit-title" name="title" maxlength="180" required /></div>
           <div class="editor-field"><label for="edit-type">Тип занятия</label><select id="edit-type" name="type" required><option value="" disabled>Выберите тип…</option><option>Лекция</option><option>Практика</option><option>Лабораторная</option><option>Семинар</option><option>Другое</option></select></div>
@@ -253,6 +253,7 @@
       let cloudWriteQueue = Promise.resolve();
       const personalOverrides = new Map();
       const personalAdditions = new Map();
+      const personalCancellations = new Map();
       const localOnlyKeys = new Set();
       const telegramCloudStorage = tg?.CloudStorage && (!tg.isVersionAtLeast || tg.isVersionAtLeast('6.9')) ? tg.CloudStorage : null;
       const localStoragePrefix = 'bntu-local-';
@@ -284,10 +285,13 @@
       const calendarDay = date => Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / (24 * 60 * 60 * 1000);
       const academicWeek = date => Math.floor((calendarDay(mondayOf(date)) - calendarDay(mondayOf(termStart))) / 7) + 1;
       const alternatingWeek = date => (academicWeek(date) - 1) % 2 + 1;
-      const selectedDateKey = () => `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+      const dateKeyFor = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const selectedDateKey = () => dateKeyFor(selectedDate);
 
       function personalMapForKey(key) {
-        return key.startsWith('bntu_add_') ? personalAdditions : personalOverrides;
+        if (key.startsWith('bntu_add_')) return personalAdditions;
+        if (key.startsWith('bntu_cancel_')) return personalCancellations;
+        return personalOverrides;
       }
 
       function clean(value) {
@@ -328,9 +332,15 @@
             ? 'Telegram-хранилище недоступно: правки сохраняются в этом браузере.'
             : 'Вне Telegram правки сохраняются только в этом браузере.';
         const intro = document.querySelector('.editor-intro');
-        if (intro) intro.textContent = storageMode === 'telegram'
-          ? `${localOnlyKeys.size ? 'Изменение действует только на выбранную дату и сохраняется локально.' : 'Эта правка действует только на выбранную дату и сохраняется в вашем Telegram.'}`
-          : 'Эта правка действует только на выбранную дату и сохраняется в этом браузере.';
+        if (intro) {
+          const scope = editorMode === 'addition'
+            ? 'Добавленная пара будет действовать только на выбранную дату.'
+            : 'Изменение применится ко всем появлениям этой пары в расписании.';
+          const storage = storageMode === 'telegram'
+            ? localOnlyKeys.size ? 'Некоторые изменения пока сохранены только в этом браузере.' : 'Изменения сохраняются в вашем Telegram.'
+            : 'Изменения сохраняются в этом браузере.';
+          intro.textContent = `${scope} ${storage}`;
+        }
       }
 
       function parseStoredOverride(value) {
@@ -342,7 +352,7 @@
         if (telegramCloudStorage) {
           try {
             const keys = await cloudCall('getKeys');
-            const relevant = (keys || []).filter(key => key === 'bntu_group' || key.startsWith('bntu_edit_') || key.startsWith('bntu_add_'));
+            const relevant = (keys || []).filter(key => key === 'bntu_group' || key.startsWith('bntu_edit_') || key.startsWith('bntu_add_') || key.startsWith('bntu_cancel_'));
             cloudValues = relevant.length ? await cloudCall('getItems', relevant) : {};
             cloudStorageReady = true;
           } catch {
@@ -356,7 +366,7 @@
 
         const localOverrides = [];
         for (const [key, value] of Object.entries(cloudValues)) {
-          if (!key.startsWith('bntu_edit_') && !key.startsWith('bntu_add_')) continue;
+          if (!key.startsWith('bntu_edit_') && !key.startsWith('bntu_add_') && !key.startsWith('bntu_cancel_')) continue;
           const parsed = parseStoredOverride(value);
           const map = personalMapForKey(key);
           if (parsed?._deleted) map.delete(key);
@@ -365,7 +375,7 @@
         try {
           for (let index = 0; index < localStorage.length; index++) {
             const localKey = localStorage.key(index);
-            if (!localKey?.startsWith(`${localStoragePrefix}bntu_edit_`) && !localKey?.startsWith(`${localStoragePrefix}bntu_add_`)) continue;
+            if (!localKey?.startsWith(`${localStoragePrefix}bntu_edit_`) && !localKey?.startsWith(`${localStoragePrefix}bntu_add_`) && !localKey?.startsWith(`${localStoragePrefix}bntu_cancel_`)) continue;
             const key = localKey.slice(localStoragePrefix.length);
             const parsed = parseStoredOverride(localStorage.getItem(localKey));
             if (parsed) {
@@ -452,22 +462,40 @@
         render();
       }
 
-      function lessonStorageKey(lesson) {
-        if (lesson.personalKey) return lesson.personalKey;
-        const occurrenceDate = selectedDateKey();
-        const identity = JSON.stringify([currentGroup?.id, occurrenceDate, lesson.day, lesson.start, lesson.end, lesson.sourceCells, lesson.title, lesson.type]);
+      function hashStorageKey(prefix, identity) {
         let hash = 14695981039346656037n;
         for (let index = 0; index < identity.length; index++) {
           hash ^= BigInt(identity.charCodeAt(index));
           hash = (hash * 1099511628211n) & 0xffffffffffffffffn;
         }
-        return `bntu_edit_${hash.toString(16).padStart(16, '0')}`;
+        return `${prefix}${hash.toString(16).padStart(16, '0')}`;
+      }
+
+      function lessonStorageKey(lesson) {
+        if (lesson.personalKey) return lesson.personalKey;
+        const identity = JSON.stringify([currentGroup?.id, lesson.day, lesson.start, lesson.end, lesson.sourceCells, lesson.title, lesson.type]);
+        return hashStorageKey('bntu_edit_', identity);
+      }
+
+      function legacyLessonStorageKey(lesson, dateKey) {
+        const identity = JSON.stringify([currentGroup?.id, dateKey, lesson.day, lesson.start, lesson.end, lesson.sourceCells, lesson.title, lesson.type]);
+        return hashStorageKey('bntu_edit_', identity);
+      }
+
+      function lessonCancellationKey(lesson, dateKey = selectedDateKey()) {
+        const identity = JSON.stringify([currentGroup?.id, dateKey, lesson.day, lesson.start, lesson.end, lesson.sourceCells, lesson.title, lesson.type]);
+        return hashStorageKey('bntu_cancel_', identity);
       }
 
       function overrideForLesson(lesson) {
         const key = lessonStorageKey(lesson);
-        const override = personalMapForKey(key).get(key);
+        const override = (lesson.personalKey ? personalAdditions : personalOverrides).get(key);
         return override?._deleted ? null : override || null;
+      }
+
+      function isLessonCancelled(lesson) {
+        if (lesson.personalKey) return Boolean(personalAdditions.get(lesson.personalKey)?.cancelled);
+        return Boolean(personalCancellations.get(lessonCancellationKey(lesson))?.cancelled);
       }
 
       function collapseSpacedLetters(value) {
@@ -779,7 +807,7 @@
 
       function renderLesson(lesson) {
         const override = overrideForLesson(lesson);
-        const shown = { ...lesson, ...(override || {}) };
+        const shown = { ...lesson, ...(override || {}), cancelled: isLessonCancelled(lesson) };
         const row = document.createElement('article');
         row.className = `lesson${shown.cancelled ? ' cancelled' : ''}`;
         const time = document.createElement('div');
@@ -813,17 +841,22 @@
         }
         const actions = document.createElement('div');
         actions.className = 'lesson-actions';
-        const editButton = addText('button', 'lesson-action', 'Изменить на эту дату');
+        const editButton = addText('button', 'lesson-action', lesson.personalKey ? 'Изменить добавленную пару' : 'Изменить в расписании');
         editButton.type = 'button';
         editButton.addEventListener('click', () => openLessonEditor(lesson));
         const cancelButton = addText('button', 'lesson-action cancel', shown.cancelled ? 'Вернуть на эту дату' : 'Отменить на эту дату');
         cancelButton.type = 'button';
         cancelButton.addEventListener('click', () => {
-          const key = lessonStorageKey(lesson);
-          const current = personalMapForKey(key).get(key);
-          const next = { ...(current && !current._deleted ? current : {}), cancelled: !(current && current.cancelled) };
-          if (!next.cancelled && Object.keys(next).length === 1) savePersonalOverride(key, null);
-          else savePersonalOverride(key, next);
+          if (lesson.personalKey) {
+            const key = lessonStorageKey(lesson);
+            const current = personalAdditions.get(key) || lesson;
+            savePersonalOverride(key, { ...current, cancelled: !current.cancelled });
+          } else {
+            const key = lessonCancellationKey(lesson);
+            const current = personalCancellations.get(key);
+            if (current?.cancelled) savePersonalOverride(key, null);
+            else savePersonalOverride(key, { cancelled: true });
+          }
         });
         actions.append(editButton, cancelButton);
         card.append(actions);
@@ -1005,6 +1038,7 @@
         currentGroup = groups.find(group => group.id === picker.value) || null;
         savedGroupId = currentGroup?.id || '';
         saveGroupPreference(savedGroupId);
+        migrateLegacyOverridesForCurrentGroup();
         updateGroupMeta();
         render();
       }
@@ -1019,6 +1053,46 @@
           : facultyPicker.value ? `Выберите группу факультета «${facultyName}»` : 'Сначала выберите факультет';
       }
 
+      function migrateLegacyOverridesForCurrentGroup() {
+        if (!currentGroup) return;
+        const migratedEdits = new Map();
+        const migratedCancellations = new Map();
+        const legacyKeys = new Set();
+        const chosenDate = selectedDateKey();
+        const date = new Date(termStart);
+        for (; date <= termEnd; date.setDate(date.getDate() + 1)) {
+          const dayIndex = (date.getDay() + 6) % 7;
+          const week = alternatingWeek(date);
+          const dayKey = dateKeyFor(date);
+          for (const lesson of currentGroup.lessons) {
+            if (lesson.day !== dayIndex || (lesson.weeks?.length && !lesson.weeks.includes(week))) continue;
+            const oldKey = legacyLessonStorageKey(lesson, dayKey);
+            if (oldKey === lessonStorageKey(lesson)) continue;
+            const oldValue = personalOverrides.get(oldKey);
+            if (!oldValue) continue;
+            legacyKeys.add(oldKey);
+            const fields = Object.fromEntries(['title', 'type', 'start', 'end', 'room', 'teacher']
+              .filter(field => Object.hasOwn(oldValue, field)).map(field => [field, oldValue[field]]));
+            if (Object.keys(fields).length) {
+              const key = lessonStorageKey(lesson);
+              const previous = migratedEdits.get(key);
+              if (!personalOverrides.has(key) && (!previous || dayKey === chosenDate)) {
+                migratedEdits.set(key, { value: fields, selectedDate: dayKey === chosenDate });
+              }
+            }
+            if (oldValue.cancelled) {
+              const key = lessonCancellationKey(lesson, dayKey);
+              if (!personalCancellations.has(key)) migratedCancellations.set(key, { cancelled: true });
+            }
+          }
+        }
+        for (const [key, item] of migratedEdits) {
+          if (!personalOverrides.has(key)) savePersonalOverride(key, item.value);
+        }
+        for (const [key, value] of migratedCancellations) savePersonalOverride(key, value);
+        for (const key of legacyKeys) savePersonalOverride(key, null);
+      }
+
       $('#prev-week').addEventListener('click', () => { if ($('#prev-week').disabled) return; selectedDate.setDate(selectedDate.getDate() - 7); render(); });
       $('#next-week').addEventListener('click', () => { if ($('#next-week').disabled) return; selectedDate.setDate(selectedDate.getDate() + 7); render(); });
 
@@ -1030,7 +1104,9 @@
           parseScheduleWorkbook(workbook);
           if (!groups.length) throw new Error('В Excel-файле не найдены группы расписания.');
           await loadPersonalData();
-          populateFaculties(); render();
+          populateFaculties();
+          migrateLegacyOverridesForCurrentGroup();
+          render();
         })
         .catch(error => {
           $('#faculty-picker').disabled = true;
