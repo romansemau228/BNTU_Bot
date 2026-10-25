@@ -127,6 +127,12 @@
       .error { border-color: #e4a8b1; color: #8e2635; background: #fff6f7; }
       .footer { display: grid; gap: 12px; margin: 22px 4px 0; color: var(--muted); font-size: 11px; line-height: 1.55; text-align: center; }
       .footer-source { margin: 0; }
+      .install-action { display: grid; justify-items: center; gap: 7px; }
+      .install-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 13px; border: 1px solid #c9ddcd; border-radius: 999px; color: #fff; background: var(--brand-dark); font-size: 12px; font-weight: 750; cursor: pointer; transition: background-color .18s ease, transform .18s ease; }
+      .install-button:hover { background: #285e36; }
+      .install-button:active { transform: scale(.98); }
+      .install-button[hidden], .install-status:empty { display: none; }
+      .install-status { max-width: 320px; margin: 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
       .contact-link { display: inline-flex; align-items: center; justify-self: center; gap: 8px; min-height: 40px; padding: 8px 13px; border: 1px solid var(--line); border-radius: 999px; color: var(--brand-dark); background: var(--surface); font-size: 12px; font-weight: 700; text-decoration: none; transition: border-color .18s ease, background-color .18s ease, transform .18s ease; }
       .contact-link svg { width: 17px; height: 17px; flex: 0 0 auto; fill: currentColor; }
       .contact-link:active { transform: scale(.98); }
@@ -203,6 +209,10 @@
         </section>
         <footer class="footer">
           <p class="footer-source">Данные расписания БНТУ · 2026–2027 учебный год<br>Время, аудитории и чередование недель указаны по исходному расписанию.</p>
+          <div class="install-action">
+            <button class="install-button" id="install-shortcut" type="button" hidden>＋ Добавить на экран телефона</button>
+            <p class="install-status" id="install-status" aria-live="polite"></p>
+          </div>
           <a class="contact-link" href="https://t.me/AngelJevil" target="_blank" rel="noopener noreferrer">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.7 4.3 18.5 20c-.2 1.1-.8 1.4-1.7.9l-4.7-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.4-4.8 8.7-7.9c.4-.4-.1-.6-.6-.2L6.6 14.1 2 12.7c-1-.3-1-1 .2-1.5L20.1 4.3c.8-.3 1.5.2 1.6 0Z"/></svg>
             <span>Нашли ошибку в расписании? Напишите мне</span>
@@ -236,6 +246,38 @@
       tg?.expand();
       tg?.setHeaderColor?.('#2d3330');
       tg?.setBackgroundColor?.('#ffffff');
+
+      const installButton = document.querySelector('#install-shortcut');
+      const installStatus = document.querySelector('#install-status');
+      const homeScreenApiAvailable = Boolean(tg?.isVersionAtLeast?.('8.0') && tg.addToHomeScreen && tg.checkHomeScreenStatus);
+
+      if (homeScreenApiAvailable) {
+        installButton.hidden = false;
+        tg.checkHomeScreenStatus(status => {
+          if (status === 'added') {
+            installButton.hidden = true;
+            installStatus.textContent = 'Ярлык расписания уже добавлен на главный экран.';
+          } else if (status === 'missed' || status === 'unknown') {
+            installButton.hidden = false;
+            installStatus.textContent = status === 'unknown'
+              ? 'Нажмите, чтобы Telegram предложил добавить ярлык с логотипом бота.'
+              : 'Добавьте расписание на главный экран и открывайте его одним нажатием.';
+          } else {
+            installButton.hidden = true;
+            installStatus.textContent = 'Добавление ярлыка не поддерживается этой версией Telegram или устройством.';
+          }
+        });
+        tg.onEvent?.('homeScreenAdded', () => {
+          installButton.hidden = true;
+          installStatus.textContent = 'Готово! Ярлык расписания добавлен на главный экран.';
+        });
+      }
+
+      installButton.addEventListener('click', () => {
+        if (!homeScreenApiAvailable) return;
+        installStatus.textContent = 'Telegram откроет системное подтверждение добавления ярлыка.';
+        tg.addToHomeScreen();
+      });
 
       const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
       const dayLong = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
