@@ -50,6 +50,7 @@
       .group-panel { display: grid; grid-template-columns: 1fr; align-items: stretch; gap: 11px; margin-top: -52px; padding: 17px; border: 1px solid var(--line); border-radius: 17px; background: #fff; box-shadow: var(--shadow); }
       .group-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
       .group-field { min-width: 0; }
+      .course-field { min-width: 0; }
       .field-label { display: block; margin: 0 0 7px; color: var(--muted); font-size: 11px; font-weight: 750; letter-spacing: .06em; }
       .group-select { width: 100%; min-width: 0; min-height: 46px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 11px; outline: none; color: var(--text); background-color: #fff; font-size: 15px; font-weight: 680; }
       .group-select::placeholder { color: #778078; opacity: 1; font-weight: 500; }
@@ -178,7 +179,7 @@
         <div class="masthead-inner">
           <div class="identity">
             <div class="brand"><span class="brand-mark" aria-hidden="true">БНТУ</span><span><span>БЕЛОРУССКИЙ</span><br><span class="brand-caption">НАЦИОНАЛЬНЫЙ ТЕХНИЧЕСКИЙ</span></span></div>
-            <span class="season">1 курс · 2026/27</span>
+            <span class="season" id="course-season">1 курс · 2026/27</span>
           </div>
           <div class="hero"><div class="kicker">Учебный график</div><h1>Расписание<br>занятий</h1><p class="hero-copy">Дневная форма · осенний семестр</p></div>
         </div>
@@ -186,12 +187,13 @@
 
       <div class="content">
         <section class="group-panel" aria-label="Выбор группы">
+          <div class="course-field"><label class="field-label" for="course-picker">Курс</label><select class="group-select" id="course-picker"><option value="1">1 курс · 2026/27</option><option value="2">2 курс · 2026/27</option></select></div>
           <div class="group-fields">
             <div class="group-field"><label class="field-label" for="faculty-picker">Факультет</label><select class="group-select" id="faculty-picker" disabled><option value="">Загружаю список…</option></select></div>
             <div class="group-field"><label class="field-label" for="group-picker">Учебная группа</label><select class="group-select" id="group-picker" disabled><option value="">Сначала выберите факультет</option></select></div>
           </div>
           <span class="faculty-count" id="group-count"></span>
-          <div class="group-meta" id="faculty-name">Расписание первого курса БНТУ</div>
+          <div class="group-meta" id="faculty-name">Выберите курс и факультет</div>
           <div class="storage-note" id="storage-note" aria-live="polite">Личные изменения сохраняются на устройстве.</div>
         </section>
 
@@ -285,11 +287,17 @@
       const ruWeek = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' });
       const termStart = new Date(2026, 8, 1);
       const termEnd = new Date(2026, 11, 28);
+      const courseConfigs = {
+        '1': { label: '1 курс · 2026/27', file: './data/schedule-source.xlsx' },
+        '2': { label: '2 курс · 2026/27', file: './data/schedule-source-2.xlsx' }
+      };
       const today = new Date();
       let selectedDate = new Date(today >= termStart && today <= termEnd ? today : termStart);
       let groups = [];
       let currentGroup = null;
       let savedGroupId = '';
+      let selectedCourse = '1';
+      const courseGroupPreferences = new Map();
       let storageMode = 'browser';
       let cloudStorageReady = false;
       let cloudWriteQueue = Promise.resolve();
@@ -301,7 +309,7 @@
       const localStoragePrefix = 'bntu-local-';
 
       const weekdays = new Map(['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'].map((day, index) => [day, index]));
-      const groupCodePattern = /(?<!\d)(1\d{5}26)(?!\d)/;
+      const groupCodePattern = /(?<!\d)(1\d{5}(?:25|26))(?!\d)/;
       const timePattern = /(?<!\d)(\d{1,2})[.:](\d{2})(?!\d)/g;
       const facultyNames = {
         'АТФ': 'Автотракторный факультет',
@@ -394,17 +402,40 @@
         if (telegramCloudStorage) {
           try {
             const keys = await cloudCall('getKeys');
-            const relevant = (keys || []).filter(key => key === 'bntu_group' || key.startsWith('bntu_edit_') || key.startsWith('bntu_add_') || key.startsWith('bntu_cancel_'));
+            const relevant = (keys || []).filter(key => key === 'bntu_course' || key === 'bntu_group' || /^bntu_group_[12]$/.test(key) || key.startsWith('bntu_edit_') || key.startsWith('bntu_add_') || key.startsWith('bntu_cancel_'));
             cloudValues = relevant.length ? await cloudCall('getItems', relevant) : {};
             cloudStorageReady = true;
           } catch {
             cloudStorageReady = false;
           }
         }
-        const localGroupOverride = safeLocalGet(`${localStoragePrefix}bntu_group`);
-        if (localGroupOverride !== null) localOnlyKeys.add('bntu_group');
-        const legacyGroup = safeLocalGet('bntu-group');
-        savedGroupId = localGroupOverride !== null ? localGroupOverride : (cloudValues.bntu_group || legacyGroup || '');
+        const localCourseOverride = safeLocalGet(`${localStoragePrefix}bntu_course`);
+        const legacyCourse = safeLocalGet('bntu-course');
+        selectedCourse = [localCourseOverride, cloudValues.bntu_course, legacyCourse].find(value => value && courseConfigs[value]) || '1';
+        $('#course-picker').value = selectedCourse;
+        if (localCourseOverride !== null) localOnlyKeys.add('bntu_course');
+
+        const preferenceMigrations = [];
+        for (const courseId of Object.keys(courseConfigs)) {
+          const key = `bntu_group_${courseId}`;
+          const localSpecific = safeLocalGet(`${localStoragePrefix}${key}`);
+          const legacyLocal = courseId === '1' ? safeLocalGet(`${localStoragePrefix}bntu_group`) : null;
+          const legacyGroup = courseId === '1' ? safeLocalGet('bntu-group') : null;
+          const cloudSpecific = cloudValues[key];
+          const legacyCloud = courseId === '1' ? cloudValues.bntu_group : null;
+          const storedGroup = [localSpecific, legacyLocal, cloudSpecific, legacyCloud, legacyGroup].find(value => value !== null && value !== undefined);
+          courseGroupPreferences.set(courseId, storedGroup || '');
+          if (localSpecific !== null) {
+            localOnlyKeys.add(key);
+            preferenceMigrations.push({ key, value: localSpecific });
+          }
+          else if (legacyLocal !== null) {
+            localOnlyKeys.add(key);
+            preferenceMigrations.push({ key, value: legacyLocal });
+          }
+        }
+        savedGroupId = courseGroupPreferences.get(selectedCourse) || '';
+        if (localCourseOverride !== null) preferenceMigrations.push({ key: 'bntu_course', value: localCourseOverride });
 
         const localOverrides = [];
         for (const [key, value] of Object.entries(cloudValues)) {
@@ -439,11 +470,11 @@
               safeLocalRemove(localKey);
               localOnlyKeys.delete(key);
             }
-            if (localGroupOverride !== null) {
-              if (localGroupOverride) await queueCloudWrite(() => cloudCall('setItem', 'bntu_group', localGroupOverride));
-              else await queueCloudWrite(() => cloudCall('removeItem', 'bntu_group'));
-              safeLocalRemove(`${localStoragePrefix}bntu_group`);
-              localOnlyKeys.delete('bntu_group');
+            for (const { key, value } of preferenceMigrations) {
+              if (value) await queueCloudWrite(() => cloudCall('setItem', key, value));
+              else await queueCloudWrite(() => cloudCall('removeItem', key));
+              safeLocalRemove(`${localStoragePrefix}${key}`);
+              localOnlyKeys.delete(key);
             }
           } catch { cloudStorageReady = false; }
         }
@@ -453,15 +484,17 @@
 
       async function saveGroupPreference(groupId) {
         const value = groupId || '';
-        if (value) safeLocalSet('bntu-group', value); else safeLocalRemove('bntu-group');
-        safeLocalSet(`${localStoragePrefix}bntu_group`, value);
-        localOnlyKeys.add('bntu_group');
+        const key = `bntu_group_${selectedCourse}`;
+        courseGroupPreferences.set(selectedCourse, value);
+        savedGroupId = value;
+        safeLocalSet(`${localStoragePrefix}${key}`, value);
+        localOnlyKeys.add(key);
         if (telegramCloudStorage) {
           try {
-            if (value) await queueCloudWrite(() => cloudCall('setItem', 'bntu_group', value));
-            else await queueCloudWrite(() => cloudCall('removeItem', 'bntu_group'));
-            safeLocalRemove(`${localStoragePrefix}bntu_group`);
-            localOnlyKeys.delete('bntu_group');
+            if (value) await queueCloudWrite(() => cloudCall('setItem', key, value));
+            else await queueCloudWrite(() => cloudCall('removeItem', key));
+            safeLocalRemove(`${localStoragePrefix}${key}`);
+            localOnlyKeys.delete(key);
             cloudStorageReady = true;
             storageMode = 'telegram';
           } catch {
@@ -469,7 +502,25 @@
             storageMode = 'browser';
           }
         } else storageMode = 'browser';
-        if (!telegramCloudStorage) localOnlyKeys.add('bntu_group');
+        if (!telegramCloudStorage) localOnlyKeys.add(key);
+        updateStorageNote();
+      }
+
+      async function saveCoursePreference(courseId) {
+        safeLocalSet(`${localStoragePrefix}bntu_course`, courseId);
+        localOnlyKeys.add('bntu_course');
+        if (telegramCloudStorage) {
+          try {
+            await queueCloudWrite(() => cloudCall('setItem', 'bntu_course', courseId));
+            safeLocalRemove(`${localStoragePrefix}bntu_course`);
+            localOnlyKeys.delete('bntu_course');
+            cloudStorageReady = true;
+            storageMode = 'telegram';
+          } catch {
+            cloudStorageReady = false;
+            storageMode = 'browser';
+          }
+        } else storageMode = 'browser';
         updateStorageNote();
       }
 
@@ -584,7 +635,7 @@
           const matches = candidates.filter(item => !['дни', 'часы'].includes(item.toLowerCase()) && item.toLowerCase().includes('факультет'));
           if (matches.length) return matches[matches.length - 1];
         }
-        return clean(sheetName).replace(/1 курс/i, '').trim();
+        return clean(sheetName).replace(/\s*\d+\s*курс.*$/i, '').trim();
       }
 
       function lessonFields(rawParts, week = null) {
@@ -659,7 +710,7 @@
                 id = match[1];
                 label = clean(value);
               } else continue;
-              const faculty = clean(sheetName).replace(/\s*1.*$/i, '').trim();
+              const faculty = clean(sheetName).replace(/\s*\d+\s*курс.*$/i, '').trim();
               headers.push({ id, label, column, faculty, facultyName: facultyNames[faculty] || facultyName(sheet, column, sheetName) });
             }
           }
@@ -1018,6 +1069,49 @@
         renderSchedule();
       }
 
+      let courseLoadRevision = 0;
+
+      async function loadCourseSchedule(courseId) {
+        const config = courseConfigs[courseId];
+        if (!config) return;
+        selectedCourse = courseId;
+        $('#course-picker').value = courseId;
+        $('#course-season').textContent = config.label;
+        savedGroupId = courseGroupPreferences.get(courseId) || '';
+        currentGroup = null;
+        groups = [];
+        const revision = ++courseLoadRevision;
+        const facultyPicker = $('#faculty-picker');
+        const groupPicker = $('#group-picker');
+        facultyPicker.disabled = true;
+        groupPicker.disabled = true;
+        facultyPicker.replaceChildren(addText('option', '', 'Загружаю список…'));
+        groupPicker.replaceChildren(addText('option', '', 'Сначала выберите факультет'));
+        $('#group-count').textContent = '';
+        updateGroupMeta();
+        $('#schedule').replaceChildren(addText('div', 'loading', `Загружаю расписание ${courseId}-го курса…`));
+        try {
+          const response = await fetch(config.file);
+          if (!response.ok) throw new Error(`Не удалось загрузить Excel-файл ${courseId}-го курса.`);
+          const buffer = await response.arrayBuffer();
+          if (revision !== courseLoadRevision) return;
+          if (!window.XLSX) throw new Error('Не загрузился модуль чтения Excel. Проверьте подключение к интернету и обновите страницу.');
+          const workbook = XLSX.read(buffer, { cellDates: false });
+          parseScheduleWorkbook(workbook);
+          if (!groups.length) throw new Error(`В Excel-файле ${courseId}-го курса не найдены группы расписания.`);
+          if (revision !== courseLoadRevision) return;
+          populateFaculties();
+          migrateLegacyOverridesForCurrentGroup();
+          render();
+        } catch (error) {
+          if (revision !== courseLoadRevision) return;
+          facultyPicker.disabled = true;
+          groupPicker.disabled = true;
+          $('#faculty-name').textContent = error.message;
+          $('#schedule').replaceChildren(addText('div', 'error', 'Не удалось прочитать Excel-файл курса. Проверьте, что исходный файл находится в папке data, и откройте приложение через GitHub Pages или локальный веб-сервер.'));
+        }
+      }
+
       function populateFaculties() {
         const facultyPicker = $('#faculty-picker');
         const picker = $('#group-picker');
@@ -1073,6 +1167,15 @@
           : `${groups.length} групп · ${new Set(groups.map(group => group.faculty)).size} факультетов`;
         updateGroupMeta();
         render();
+      }
+
+      async function handleCoursePick() {
+        const courseId = $('#course-picker').value;
+        if (!courseConfigs[courseId]) return;
+        selectedCourse = courseId;
+        await saveCoursePreference(courseId);
+        if ($('#course-picker').value !== courseId) return;
+        await loadCourseSchedule(courseId);
       }
 
       function handleGroupPick() {
@@ -1138,23 +1241,19 @@
       $('#prev-week').addEventListener('click', () => { if ($('#prev-week').disabled) return; selectedDate.setDate(selectedDate.getDate() - 7); render(); });
       $('#next-week').addEventListener('click', () => { if ($('#next-week').disabled) return; selectedDate.setDate(selectedDate.getDate() + 7); render(); });
 
-      fetch('./data/schedule-source.xlsx')
-        .then(response => { if (!response.ok) throw new Error('Не удалось загрузить Excel-файл расписания.'); return response.arrayBuffer(); })
-        .then(async buffer => {
-          if (!window.XLSX) throw new Error('Не загрузился модуль чтения Excel. Проверьте подключение к интернету и обновите страницу.');
-          const workbook = XLSX.read(buffer, { cellDates: false });
-          parseScheduleWorkbook(workbook);
-          if (!groups.length) throw new Error('В Excel-файле не найдены группы расписания.');
-          await loadPersonalData();
-          populateFaculties();
-          migrateLegacyOverridesForCurrentGroup();
-          render();
+      $('#course-picker').disabled = true;
+      $('#course-picker').addEventListener('change', handleCoursePick);
+      loadPersonalData()
+        .then(() => {
+          $('#course-picker').disabled = false;
+          return loadCourseSchedule(selectedCourse);
         })
         .catch(error => {
+          $('#course-picker').disabled = false;
           $('#faculty-picker').disabled = true;
           $('#group-picker').disabled = true;
           $('#faculty-name').textContent = error.message;
-          const host = $('#schedule'); host.replaceChildren(addText('div', 'error', 'Не удалось прочитать исходную книгу Excel. Проверьте, что файл лежит в папке data рядом с проектом, и откройте приложение через GitHub Pages или локальный веб-сервер.'));
+          $('#schedule').replaceChildren(addText('div', 'error', 'Не удалось загрузить данные приложения. Обновите страницу и попробуйте снова.'));
         });
     </script>
   </body>
